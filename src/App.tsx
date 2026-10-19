@@ -9,16 +9,34 @@ import { ForgotPasswordModal } from './components/ForgotPasswordModal';
 import { DashboardPreview } from './components/DashboardPreview';
 import { DriverPanel } from './components/DriverPanel';
 import { AdminPanel } from './components/AdminPanel';
+import { SplashScreen } from './components/SplashScreen';
+import { OnboardingScreen } from './components/OnboardingScreen';
 import { OtpNotificationBanner } from './components/OtpNotificationBanner';
 import { userStorage, type UserAccount } from './lib/supabase';
 
 export function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   const [currentView, setCurrentView] = useState<
     'login' | 'signup' | 'category' | 'driver-application' | 'driver-pending' | 'dashboard' | 'driver-panel' | 'admin-panel'
   >('login');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [submittedDriverData, setSubmittedDriverData] = useState<any>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    const onboardingDone = localStorage.getItem('safargo_onboarding_completed_v1');
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+  };
+
+  const handleOnboardingFinish = () => {
+    localStorage.setItem('safargo_onboarding_completed_v1', 'true');
+    setShowOnboarding(false);
+  };
 
   // Persistent session: on launch, if already authenticated, check whether admin, driver or passenger mode was active!
   useEffect(() => {
@@ -108,6 +126,14 @@ export function App() {
     setCurrentUser(null);
     setCurrentView('login');
   };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
+  if (showOnboarding) {
+    return <OnboardingScreen onFinish={handleOnboardingFinish} />;
+  }
 
   const isAuthView = 
     currentView === 'login' || 
