@@ -258,7 +258,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                   Safar<span className="text-[#16a34a]">Go</span>
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 font-semibold block -mt-0.5 hidden sm:block">
+              <span className="text-[10px] text-slate-500 font-semibold -mt-0.5 hidden sm:block">
                 Peshawar Rides
               </span>
             </div>
@@ -1095,11 +1095,11 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               className="relative w-84 max-w-[88vw] h-full bg-[#fafdf8] shadow-2xl flex flex-col justify-between z-10 border-l border-emerald-100"
             >
               {/* A. Passenger Account Header */}
-              <div className="p-5 pb-4 bg-white border-b border-slate-100 shrink-0">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-13 h-13 rounded-2xl overflow-hidden bg-emerald-50 border-2 border-[#16a34a] shadow-sm">
+              <div className="p-4 pb-3.5 bg-white border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-50 border-2 border-[#16a34a] shadow-xs">
                         {currentUser.avatarUrl ? (
                           <img
                             src={currentUser.avatarUrl}
@@ -1107,25 +1107,25 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-[#16a34a] font-black text-lg">
+                          <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-[#16a34a] font-bold text-sm">
                             {(currentUser.fullName || 'P').charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
-                      <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#16a34a] border-2 border-white flex items-center justify-center text-white text-[9px] font-bold">
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#16a34a] border border-white flex items-center justify-center text-white text-[8px] font-bold">
                         ✓
                       </span>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
+                    <div className="space-y-0.5 overflow-hidden">
+                      <h3 className="text-xs font-black text-slate-900 leading-tight truncate max-w-[155px]">
                         {currentUser.fullName || 'Passenger'}
                       </h3>
-                      <p className="text-xs text-slate-500 truncate max-w-[145px]">
+                      <p className="text-[11px] text-slate-500 truncate max-w-[155px]">
                         {currentUser.email || currentUser.phone || 'Verified Passenger'}
                       </p>
-                      <div className="flex items-center gap-1.5 pt-0.5">
-                        <span className="text-[10px] font-bold text-[#16a34a] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <div className="flex items-center gap-1 pt-0.5">
+                        <span className="text-[9px] font-bold text-[#16a34a] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                           Passenger Account
                         </span>
                       </div>
@@ -1135,7 +1135,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                   <button
                     onClick={() => setIsNavDrawerOpen(false)}
                     aria-label="Close Drawer"
-                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors active:scale-95"
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors active:scale-95 shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1158,8 +1158,8 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 </button>
               </div>
 
-              {/* B, C, D, E. Scrollable Four Sections */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5 no-scrollbar">
+              {/* B, C, D, E. Scrollable Four Sections with Visible Custom Scrollbar */}
+              <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 overscroll-contain [scrollbar-width:thin] [scrollbar-color:#86efac_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-emerald-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#16a34a]">
                 {[
                   {
                     title: 'ACCOUNT',

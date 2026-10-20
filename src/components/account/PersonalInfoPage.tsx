@@ -215,7 +215,7 @@ export const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({
         <div className="rounded-3xl bg-white border border-slate-200/80 p-5 shadow-sm space-y-4">
           {/* Full Name */}
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-slate-400" />
               Full Name
             </label>
@@ -230,7 +230,7 @@ export const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({
 
           {/* Username */}
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-slate-400" />
               Username
             </label>
@@ -289,7 +289,7 @@ export const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({
 
           {/* Preferred Peshawar City / Zone */}
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-slate-400" />
               Primary Peshawar Zone
             </label>

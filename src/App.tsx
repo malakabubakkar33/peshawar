@@ -15,21 +15,10 @@ import { OtpNotificationBanner } from './components/OtpNotificationBanner';
 import { userStorage, type UserAccount } from './lib/supabase';
 
 export function App() {
-  // Splash Screen 10-Minute Frequency Logic:
-  // If user closed and reopened within 10 minutes, skip splash screen.
-  // If > 10 minutes or first open, show splash screen.
-  const [showSplash, setShowSplash] = useState(() => {
-    const lastActive = localStorage.getItem('safargo_last_active_time');
-    if (lastActive) {
-      const elapsed = Date.now() - parseInt(lastActive, 10);
-      const TEN_MINUTES_MS = 10 * 60 * 1000;
-      if (elapsed < TEN_MINUTES_MS) {
-        return false;
-      }
-    }
-    return true;
-  });
+  // Splash Screen: Shows on app launch
+  const [showSplash, setShowSplash] = useState(true);
 
+  // Onboarding Screen: Shows after splash screen when user is NOT logged in
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [currentView, setCurrentView] = useState<
