@@ -33,6 +33,8 @@ export async function sendVerificationOtpEmail(
     localStorage.getItem('safargo_custom_resend_api_key') || 
     '';
 
+
+
   // HTML Email Template with SafarGo Peshawar Branding & Copy Code Button
   const htmlContent = `
 <!DOCTYPE html>

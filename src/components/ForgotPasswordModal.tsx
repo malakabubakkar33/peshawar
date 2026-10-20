@@ -7,7 +7,9 @@ import {
 import { userStorage } from '../lib/supabase';
 import { emitOtpNotification } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
+import { sendVerificationOtpEmail } from '../lib/emailService';
 import { TopErrorToast } from './TopErrorToast';
+
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -96,6 +98,13 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     const realCode = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(realCode);
 
+    // Send real email via Resend API
+    if (user.email && user.email.includes('@')) {
+      sendVerificationOtpEmail(user.email, realCode, user.fullName || 'SafarGo Traveler').catch((err) => {
+        console.warn('Resend password reset email notification:', err);
+      });
+    }
+
     setTimeout(() => {
       setIsLoading(false);
       // Dispatch real OTP notification event to user
@@ -111,6 +120,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         otpInputsRef.current[0]?.focus();
       }, 150);
     }, 700);
+
   };
 
   // Step 2: Handle OTP input digit change & auto-advance
@@ -155,8 +165,16 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setCanResend(false);
     setErrorMsg(null);
     emitOtpNotification(email, newCode);
+
+    if (email && email.includes('@')) {
+      sendVerificationOtpEmail(email, newCode, 'SafarGo Traveler').catch((err) => {
+        console.warn('Resend OTP error:', err);
+      });
+    }
+
     sound.playSuccess();
   };
+
 
   // Step 2 Verify OTP
   const handleVerifyOtp = (e: React.FormEvent) => {
