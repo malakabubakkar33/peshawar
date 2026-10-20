@@ -346,6 +346,26 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 ))}
               </div>
 
+              {/* In-app OTP Quick Auto-Fill */}
+              {generatedOtp && (
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-lime-50/90 border border-lime-300 flex items-center justify-between text-xs text-lime-900 font-semibold shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-lime-500 animate-pulse" />
+                    <span>App OTP: <strong className="font-mono text-sm font-extrabold text-lime-800 tracking-wider">{generatedOtp}</strong></span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtp(generatedOtp.split('').slice(0, 6));
+                      sound.playSuccess();
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-[11px] font-bold shadow-sm cursor-pointer transition active:scale-95"
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
+              )}
+
               {/* Countdown & Resend Button */}
               <div className="flex items-center justify-between text-xs pt-1">
                 <span className="text-slate-500 font-medium">

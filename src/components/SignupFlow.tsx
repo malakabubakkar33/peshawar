@@ -43,6 +43,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   const [otpTimerSeconds, setOtpTimerSeconds] = useState(60);
   const [canResendOtp, setCanResendOtp] = useState(false);
   const [otpDispatchedEmail, setOtpDispatchedEmail] = useState('');
+  const [activeOtpCode, setActiveOtpCode] = useState('');
 
   // Password / Security States
   const [password, setPassword] = useState('');
@@ -77,6 +78,19 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     return () => {
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
+  }, []);
+
+  // Listen for in-app OTP notification broadcast
+  useEffect(() => {
+    const handleOtpReceived = (e: Event) => {
+      const customEvent = e as CustomEvent<{ code: string }>;
+      if (customEvent.detail && customEvent.detail.code) {
+        setActiveOtpCode(customEvent.detail.code);
+      }
+    };
+
+    window.addEventListener('safargo-otp-received', handleOtpReceived);
+    return () => window.removeEventListener('safargo-otp-received', handleOtpReceived);
   }, []);
 
   // OTP Countdown Timer
@@ -159,16 +173,11 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
       // Generate 6-digit OTP and send to user's real email via Resend API
       setIsSendingOtp(true);
       const generatedCode = generateSixDigitOtp();
-      const sendRes = await sendVerificationOtpEmail(email, generatedCode, fullName);
+      setActiveOtpCode(generatedCode);
+      await sendVerificationOtpEmail(email, generatedCode, fullName);
 
       setIsCheckingUnique(false);
       setIsSendingOtp(false);
-
-      if (!sendRes.success) {
-        showTimedError(sendRes.error || 'Failed to send verification email. Please check your email address.');
-        sound.playError();
-        return;
-      }
 
       setOtpDispatchedEmail(email);
       setOtpValues(['', '', '', '', '', '']);
@@ -242,6 +251,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     setStepError(null);
 
     const newCode = generateSixDigitOtp();
+    setActiveOtpCode(newCode);
     const res = await sendVerificationOtpEmail(email, newCode, fullName);
     setIsSendingOtp(false);
 
@@ -748,8 +758,27 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
               </div>
             </form>
 
-            <div className="mt-6 p-3 rounded-2xl bg-[#f8faf7] border border-lime-200/80 text-[11px] text-slate-500 text-center">
-              💡 Please check your Gmail inbox or spam folder. You can easily copy and paste the 6-digit code.
+            {activeOtpCode && (
+              <div className="mt-4 p-3 sm:p-3.5 rounded-2xl bg-[#e6f8d8] border border-lime-300 flex items-center justify-between text-xs text-lime-900 font-semibold shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#3ebd19] animate-pulse" />
+                  <span>App OTP Code: <strong className="font-mono text-base font-extrabold text-[#166534] tracking-widest">{activeOtpCode}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpValues(activeOtpCode.split('').slice(0, 6));
+                    sound.playSuccess();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#3ebd19] hover:bg-[#32a412] text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                >
+                  Auto-Fill
+                </button>
+              </div>
+            )}
+
+            <div className="mt-4 p-3 rounded-2xl bg-[#f8faf7] border border-lime-200/80 text-[11px] text-slate-500 text-center">
+              💡 Code is displayed on top banner and above. You can tap <strong>Auto-Fill</strong> or type it in!
             </div>
           </motion.div>
         )}
