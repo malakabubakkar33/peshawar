@@ -8,6 +8,7 @@ import {
 import { userStorage, type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
 import { ImageCropperModal } from './ImageCropperModal';
+import { uploadToCloudinary } from '../lib/cloudinary';
 
 interface ProfilePageProps {
   user: UserAccount;
@@ -62,6 +63,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     if (updated) {
       userStorage.setSession(updated);
     }
+    // Asynchronously upload to Cloudinary CDN
+    uploadToCloudinary(croppedDataUrl, 'safargo_avatars').then((res) => {
+      if (res.success && res.url) {
+        userStorage.updateUser(user.id, { avatarUrl: res.url });
+      }
+    });
   };
 
   return (

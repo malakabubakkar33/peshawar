@@ -33,7 +33,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({
       sound.playSuccess();
       pushNotificationService.sendNotification({
         title: 'Push Notifications Active! 🔔',
-        body: 'Ab aap ko SafarGo rides aur alerts ki realtime notifications milengi.'
+        body: 'You will now receive real-time SafarGo ride updates and security alerts.'
       });
     }
   };
@@ -131,8 +131,8 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({
             </h4>
             <p className="text-xs text-slate-500">
               {pushStatus === 'granted' 
-                ? 'Aap ko live Peshawar ride status aur OTP updates mobile screen par milengi.' 
-                : 'Realtime updates pane ke liye mobile/browser notifications on karein.'}
+                ? 'You will receive real-time Peshawar ride tracking, OTP alerts, and driver notifications on your screen.' 
+                : 'Enable browser notifications to stay updated on incoming rides, promo discounts, and driver arrivals.'}
             </p>
           </div>
         </div>

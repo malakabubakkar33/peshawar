@@ -59,15 +59,19 @@ export function App() {
   const handleSplashComplete = () => {
     setShowSplash(false);
     localStorage.setItem('safargo_last_active_time', Date.now().toString());
-    const onboardingDone = localStorage.getItem('safargo_onboarding_completed_v1');
-    if (!onboardingDone) {
+    const session = userStorage.getSession();
+    if (!session) {
+      // User is NOT logged in: ALWAYS display onboarding screen every time app is opened!
       setShowOnboarding(true);
+    } else {
+      // User IS logged in: never show onboarding, open active panel immediately!
+      setShowOnboarding(false);
     }
   };
 
   const handleOnboardingFinish = () => {
-    localStorage.setItem('safargo_onboarding_completed_v1', 'true');
     setShowOnboarding(false);
+    setCurrentView('login');
   };
 
   // Persistent session: on launch, if already authenticated, check whether admin, driver or passenger mode was active!
@@ -197,6 +201,7 @@ export function App() {
   const handleLogout = () => {
     userStorage.clearSession();
     setCurrentUser(null);
+    setShowOnboarding(true);
     setCurrentView('login');
   };
 

@@ -299,7 +299,7 @@ export async function checkFieldUniqueness(
         return {
           valid: false,
           field: 'email',
-          message: 'Ye Email pehle se registered hai! Meharbani karke koi doosra Email use karein.'
+          message: 'This email address is already registered. Please use another email or sign in.'
         };
       }
     }
@@ -317,7 +317,7 @@ export async function checkFieldUniqueness(
           return {
             valid: false,
             field: 'phone',
-            message: 'Ye Phone Number pehle se registered hai! Meharbani karke koi doosra Phone Number use karein.'
+            message: 'This phone number is already registered. Please use another phone number or sign in.'
           };
         }
       }
@@ -335,7 +335,7 @@ export async function checkFieldUniqueness(
         return {
           valid: false,
           field: 'username',
-          message: 'Ye Username pehle se kisi aur user ke paas hai! Meharbani karke koi doosra Username chunein.'
+          message: 'This username is already taken. Please choose another username.'
         };
       }
     }
@@ -351,7 +351,7 @@ export async function checkFieldUniqueness(
     return {
       valid: false,
       field: 'email',
-      message: 'Ye Email pehle se registered hai! Meharbani karke koi doosra Email use karein.'
+      message: 'This email address is already registered. Please use another email or sign in.'
     };
   }
 
@@ -360,7 +360,7 @@ export async function checkFieldUniqueness(
     return {
       valid: false,
       field: 'phone',
-      message: 'Ye Phone Number pehle se registered hai! Meharbani karke koi doosra Phone Number use karein.'
+      message: 'This phone number is already registered. Please use another phone number or sign in.'
     };
   }
 
@@ -373,7 +373,7 @@ export async function checkFieldUniqueness(
     return {
       valid: false,
       field: 'username',
-      message: 'Ye Username pehle se kisi aur user ke paas hai! Meharbani karke koi doosra Username chunein.'
+      message: 'This username is already taken. Please choose another username.'
     };
   }
 
@@ -536,7 +536,7 @@ export async function loginUserWithSupabase(
   // 3. Fallback to cached verified credentials
   if (matchedUser) {
     if (matchedUser.password && matchedUser.password !== pass) {
-      return { success: false, error: 'Password ghalat hai. Baraye meharbani dobara koshish karein.' };
+      return { success: false, error: 'Incorrect password. Please verify your password and try again.' };
     }
     userStorage.setSession(matchedUser);
     return { success: true, user: matchedUser };
@@ -544,7 +544,7 @@ export async function loginUserWithSupabase(
 
   return { 
     success: false, 
-    error: 'Account nahi mila. Baraye meharbani credentials check karein ya naya account banayein.' 
+    error: 'Account not found. Please verify your credentials or create a new account.' 
   };
 }
 

@@ -121,7 +121,7 @@ export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = (
           <div className="mb-2">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-black uppercase tracking-wider">
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Location Mandatory • لازمی اجازت</span>
+              <span>Location Mandatory</span>
             </span>
           </div>
 
@@ -157,7 +157,7 @@ export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = (
                 <span>Permission Blocked in Settings</span>
               </div>
               <p className="text-[11px] text-red-700 leading-relaxed">
-                Aapke browser ya mobile ki setting se location band hai. Baraye meharbani site settings ya mobile notification bar se <strong>Location / GPS ON</strong> karein aur dobara try karein.
+                Location is blocked in your browser or device settings. Please open your device quick settings or browser site permissions, enable <strong>Location / GPS</strong>, and tap retry.
               </p>
             </div>
           )}

@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, User, 
   CreditCard, FileText, Camera, Upload, 
-  Check, AlertCircle, Trash2, ShieldCheck, Copy, 
+  Check, Trash2, ShieldCheck, Copy, 
   Receipt, Wallet, CheckCircle2, ChevronRight
 } from 'lucide-react';
 import { type UserAccount } from '../lib/supabase';
 import { adminManager } from '../lib/adminData';
 import { sound } from '../lib/sound';
+import { TopErrorToast } from './TopErrorToast';
+import { uploadToCloudinary } from '../lib/cloudinary';
 
 interface DriverApplicationPageProps {
   user: UserAccount | null;
@@ -131,13 +133,19 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
       setDocuments(prev => ({ ...prev, [key]: dataUrl }));
       sound.playSuccess();
+      // Asynchronously upload to Cloudinary CDN
+      uploadToCloudinary(file, 'safargo_driver_docs').then((cRes) => {
+        if (cRes.success && cRes.url) {
+          setDocuments(prev => ({ ...prev, [key]: cRes.url }));
+        }
+      });
     };
     reader.onerror = () => {
-      showError('Failed to read photo. Please try again.');
+      showError('Failed to read the document image. Please try again.');
     };
     reader.readAsDataURL(file);
 
@@ -154,10 +162,16 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
       setPaymentScreenshot(dataUrl);
       sound.playSuccess();
+      // Asynchronously upload to Cloudinary CDN
+      uploadToCloudinary(file, 'safargo_easypaisa_receipts').then((cRes) => {
+        if (cRes.success && cRes.url) {
+          setPaymentScreenshot(cRes.url);
+        }
+      });
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -181,12 +195,12 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     sound.playClick();
     setErrorMsg(null);
 
-    if (!fullName.trim()) return showError('Baraye meharbani apna mukammal naam darj karein.');
-    if (!phone.trim()) return showError('Baraye meharbani apna phone number darj karein.');
-    if (!email.trim()) return showError('Baraye meharbani apna email address darj karein.');
-    if (!vehicleName.trim()) return showError('Baraye meharbani vehicle name (e.g. Honda CG 125, Corolla) darj karein.');
-    if (!vehicleModel.trim()) return showError('Baraye meharbani vehicle model year (e.g. 2023) darj karein.');
-    if (!vehicleNumber.trim()) return showError('Baraye meharbani vehicle number plate darj karein.');
+    if (!fullName.trim()) return showError('Please enter your full legal name.');
+    if (!phone.trim()) return showError('Please enter your contact phone number.');
+    if (!email.trim()) return showError('Please enter your valid email address.');
+    if (!vehicleName.trim()) return showError('Please enter vehicle make and model (e.g., Honda CG 125, Toyota Corolla).');
+    if (!vehicleModel.trim()) return showError('Please enter vehicle manufacturing model year (e.g., 2023).');
+    if (!vehicleNumber.trim()) return showError('Please enter vehicle registration number plate.');
 
     const missingDocs: string[] = [];
     if (!documents.cnicFront) missingDocs.push('CNIC Front');
@@ -196,7 +210,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     if (!documents.selfie) missingDocs.push('Selfie Photo');
 
     if (missingDocs.length > 0) {
-      return showError(`Baraye meharbani ye documents upload karein: ${missingDocs.slice(0, 2).join(', ')}${missingDocs.length > 2 ? '...' : ''}`);
+      return showError(`Please upload the following required documents: ${missingDocs.slice(0, 2).join(', ')}${missingDocs.length > 2 ? '...' : ''}`);
     }
 
     // Move to EasyPaisa Local Payment Gateway Step
@@ -210,7 +224,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     setErrorMsg(null);
 
     if (!paymentScreenshot) {
-      return showError('Baraye meharbani EasyPaisa payment ka screenshot upload karein.');
+      return showError('Please upload your EasyPaisa payment receipt screenshot before proceeding.');
     }
 
     setIsSubmitting(true);
@@ -269,6 +283,9 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
   return (
     <div className="relative w-full min-h-screen bg-[#fafdf8] px-4 pt-3 sm:pt-4 pb-10 flex flex-col items-center selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
+      {/* Top Floating Notification Toast (Clean UI at Top of Screen) */}
+      <TopErrorToast message={errorMsg} onDismiss={() => setErrorMsg(null)} />
+      
       {/* Background Subtle Corner Waves */}
       <div className="fixed top-0 left-0 w-44 h-44 pointer-events-none z-0 select-none opacity-60">
         <svg viewBox="0 0 360 360" fill="none" className="w-full h-full">
@@ -294,21 +311,6 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
             <span>Peshawar Driver Registration</span>
           </div>
         </div>
-
-        {/* Error Banner */}
-        <AnimatePresence>
-          {errorMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 shadow-sm"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span className="font-medium">{errorMsg}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* ========================================================================= */}
         {/* STEP 1: VEHICLE INFORMATION & DOCUMENTS                                   */}

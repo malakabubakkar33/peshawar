@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
-import { User, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle, Check } from 'lucide-react';
+import { motion, type Variants } from 'framer-motion';
+import { User, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { Logo } from './Logo';
+import { TopErrorToast } from './TopErrorToast';
 import { loginUserWithSupabase, type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
 
@@ -64,13 +65,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     const cleanPass = password;
 
     if (!cleanId) { 
-      showTimedError('Baraye meharbani apna email, phone number ya username darj karein.'); 
-      sound.playError(); 
+      showTimedError('Please enter your email, phone number, or username.'); 
       return; 
     }
     if (!cleanPass) { 
-      showTimedError('Baraye meharbani apna password darj karein.'); 
-      sound.playError(); 
+      showTimedError('Please enter your password to continue.'); 
       return; 
     }
 
@@ -80,8 +79,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       const res = await loginUserWithSupabase(cleanId, cleanPass);
       if (!res.success || !res.user) {
         setLoading(false);
-        showTimedError(res.error || 'Account nahi mila ya password ghalat hai. Dobara koshish karein.');
-        sound.playError();
+        showTimedError(res.error || 'Invalid credentials. Please verify your account details or reset your password.');
         return;
       }
 
@@ -90,8 +88,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       onSuccessLogin(res.user);
     } catch (err: any) {
       setLoading(false);
-      showTimedError('Login me takneeki masla aya. Baraye meharbani dobara koshish karein.');
-      sound.playError();
+      showTimedError('A technical connection error occurred during login. Please try again.');
     }
   };
 
@@ -107,6 +104,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center justify-between px-4 pt-3 sm:pt-4 pb-8 sm:pb-10 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
+      
+      {/* Top Floating Notification Toast (Clean UI at Top of Screen) */}
+      <TopErrorToast message={errorMessage} onDismiss={() => setErrorMessage(null)} />
       
       {/* ===== BACKGROUND DECORATIVE GRAPHICS (Exact Reference Match) ===== */}
       
@@ -227,20 +227,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           variants={itemVariants}
           className="w-full bg-white rounded-[28px] sm:rounded-[32px] p-6 sm:p-7 shadow-[0_12px_45px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] border border-slate-100"
         >
-          {/* Error Message Toast */}
-          <AnimatePresence>
-            {errorMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -8, height: 0 }}
-                className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 overflow-hidden"
-              >
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                <span className="font-medium">{errorMessage}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">

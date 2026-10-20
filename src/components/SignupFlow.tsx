@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   ArrowLeft, ArrowRight, User, Mail, Phone, 
   Camera, Upload, Check, Eye, EyeOff, 
-  AlertCircle, RotateCcw, KeyRound, Sparkles
+  RotateCcw, KeyRound, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AVATAR_PRESETS } from '../lib/peshawarData';
@@ -11,6 +11,8 @@ import { userStorage, checkFieldUniqueness, registerUserWithSupabase, type UserA
 import { sound } from '../lib/sound';
 import { sendVerificationOtpEmail, generateSixDigitOtp, verifyEnteredOtp } from '../lib/emailService';
 import { ImageCropperModal } from './ImageCropperModal';
+import { TopErrorToast } from './TopErrorToast';
+import { uploadToCloudinary } from '../lib/cloudinary';
 
 interface SignupFlowProps {
   onBackToLogin: () => void;
@@ -121,27 +123,23 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     setConflictField(null);
 
     if (!fullName.trim()) { 
-      showTimedError('Baraye meharbani apna mukammal naam darj karein.'); 
-      sound.playError(); 
+      showTimedError('Please enter your full name.'); 
       return; 
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) { 
-      showTimedError('Baraye meharbani durust email address darj karein.'); 
-      sound.playError(); 
+      showTimedError('Please enter a valid email address.'); 
       return; 
     }
 
     if (!phone.trim() || phone.replace(/\D/g, '').length < 10) { 
-      showTimedError('Baraye meharbani durust phone number (kam az kam 10 digits) darj karein.'); 
-      sound.playError(); 
+      showTimedError('Please enter a valid phone number (at least 10 digits).'); 
       return; 
     }
 
     if (!username.trim() || username.length < 3) { 
-      showTimedError('Username kam az kam 3 characters ka hona chahiye.'); 
-      sound.playError(); 
+      showTimedError('Username must be at least 3 characters long.'); 
       return; 
     }
 
@@ -153,8 +151,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
 
       if (!check.valid) {
         setConflictField(check.field || null);
-        showTimedError(check.message || 'Ye data pehle se mojood hai. Baraye meharbani tabdeel karein.');
-        sound.playError();
+        showTimedError(check.message || 'This email, phone number, or username is already registered. Please use different details.');
         setIsCheckingUnique(false);
         return;
       }
@@ -267,8 +264,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
 
     const fullCode = otpValues.join('');
     if (fullCode.length < 6) {
-      showTimedError('Baraye meharbani mukammal 6-digit code darj karein.');
-      sound.playError();
+      showTimedError('Please enter the complete 6-digit verification code.');
       return;
     }
 
@@ -279,8 +275,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
 
       if (!verification.valid) {
         setIsVerifyingOtp(false);
-        showTimedError(verification.message || 'Ghalat code. Dobara check karein.');
-        sound.playError();
+        showTimedError(verification.message || 'Invalid verification code. Please check your email and try again.');
         return;
       }
 
@@ -355,6 +350,11 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   const handleCropComplete = (croppedDataUrl: string) => {
     setCustomAvatarPreview(croppedDataUrl);
     sound.playSuccess();
+    uploadToCloudinary(croppedDataUrl, 'safargo_signup_avatars').then((cRes) => {
+      if (cRes.success && cRes.url) {
+        setCustomAvatarPreview(cRes.url);
+      }
+    });
   };
 
   // Step 3: Next -> Step 4 Review
@@ -426,6 +426,9 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center px-4 pt-3 sm:pt-4 pb-8 sm:pb-12 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
+      {/* Top Floating Notification Toast (Clean UI at Top of Screen) */}
+      <TopErrorToast message={stepError} onDismiss={() => setStepError(null)} />
+      
       {/* Background Corner Wave Graphics */}
       <div className="fixed top-0 left-0 w-[160px] sm:w-[200px] h-[160px] sm:h-[200px] pointer-events-none z-0 select-none opacity-75">
         <svg viewBox="0 0 360 360" fill="none" className="w-full h-full">
@@ -442,21 +445,6 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
 
       {/* Main Form Container */}
       <div className="relative z-10 w-full max-w-[420px] flex flex-col mx-auto pt-1 sm:pt-2">
-        
-        {/* Error Notification Toast */}
-        <AnimatePresence>
-          {stepError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 shadow-sm"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span className="font-medium">{stepError}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* ========================================================================= */}
         {/* STEP 1: PERSONAL INFORMATION                                              */}

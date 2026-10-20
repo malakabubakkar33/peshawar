@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   X, Mail, KeyRound, Lock, CheckCircle2, 
-  ArrowRight, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff 
+  ArrowRight, ArrowLeft, RefreshCw, Eye, EyeOff 
 } from 'lucide-react';
 import { userStorage } from '../lib/supabase';
 import { emitOtpNotification } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
+import { TopErrorToast } from './TopErrorToast';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -216,6 +217,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <TopErrorToast message={errorMsg} onDismiss={() => setErrorMsg(null)} />
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -237,14 +239,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         <div className="w-12 h-12 rounded-2xl bg-lime-100 border border-lime-300 flex items-center justify-center text-lime-700 mb-4 shadow-sm">
           <KeyRound className="w-6 h-6" />
         </div>
-
-        {/* Error message */}
-        {errorMsg && (
-          <div className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
 
         {/* STEP 1: ENTER EMAIL */}
         {step === 1 && (

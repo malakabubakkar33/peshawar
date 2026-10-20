@@ -316,7 +316,7 @@ export const adminManager = {
       // Dispatch real push event and OS Notification to notify driver
       pushNotificationService.sendNotification({
         title: '🎉 Driver Application Approved!',
-        body: `Mubarak ho ${target.fullName}! SafarGo Peshawar admin team ne aap ki application approve kar di hai. Aap ab rides accept kar sakte hain.`,
+        body: `Congratulations ${target.fullName}! Your SafarGo Peshawar driver registration has been reviewed and approved. Driver mode is now unlocked.`,
         tag: 'driver-approval'
       });
 
@@ -335,6 +335,13 @@ export const adminManager = {
       target.rejectionReason = reason;
       target.reviewedAt = new Date().toISOString();
       localStorage.setItem(DRIVER_APPS_KEY, JSON.stringify(apps));
+
+      pushNotificationService.sendNotification({
+        title: 'Driver Application Update',
+        body: `Hello ${target.fullName}, your SafarGo driver registration requires attention: ${reason}`,
+        tag: 'driver-rejection'
+      });
+
       return target;
     }
     return null;
