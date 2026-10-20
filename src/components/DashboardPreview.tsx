@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, ArrowRight, Search, MapPin, 
+  ArrowLeft, ArrowRight, MapPin, 
   Phone, MessageCircle, Check, X, Clock, Wallet, 
-  Bell, Shield, LogOut, ChevronRight, Navigation, ShieldCheck,
+  Bell, Shield, LogOut, ChevronRight, ShieldCheck,
   User as UserIcon, Settings, HelpCircle, 
-  AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles
+  AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles,
+  Locate, Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { type UserAccount } from '../lib/supabase';
@@ -20,7 +21,9 @@ import { HistoryPage } from './HistoryPage';
 import { WalletPage } from './WalletPage';
 import { NotificationPage } from './NotificationPage';
 import { SearchPage } from './SearchPage';
+import { RideSearchSheet, type SearchPanelState } from './RideSearchSheet';
 import { PassengerBottomNavigation, type PassengerNavTab } from './PassengerBottomNavigation';
+
 import { DriverChatModal, DriverCallModal } from './DriverChatModal';
 import { PersonalInfoPage } from './account/PersonalInfoPage';
 import { SecurityPrivacyPage } from './account/SecurityPrivacyPage';
@@ -99,6 +102,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
 
   // 8-step Ride Booking state (active when on 'home' page)
   const [currentScreen, setCurrentScreen] = useState<ScreenState>('home');
+  const [searchSheetState, setSearchSheetState] = useState<SearchPanelState>('collapsed');
 
   // Selected Locations
   const [fromPlace, setFromPlace] = useState<PeshawarPlace>(PESHAWAR_PLACES[0]); // Islamia College Peshawar
@@ -137,7 +141,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   const [isCallOpen, setIsCallOpen] = useState(false);
   const [hasUnreadDriverMsg, setHasUnreadDriverMsg] = useState(false);
   const [isCustomPinMode, setIsCustomPinMode] = useState(false);
-  const [pinModeType, setPinModeType] = useState<'from' | 'to'>('from');
+  const [pinModeType] = useState<'from' | 'to'>('from');
 
   // Switch to Driver Mode Handler
   const handleSwitchToDriver = () => {
@@ -232,80 +236,80 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       {/* ======================================================== */}
       {/* 1. FIXED GLASS HEADER (Full Screen Edge-to-Edge)         */}
       {/* ======================================================== */}
-      <header className={`fixed top-0 left-0 right-0 z-30 transition-all ${
-        activePage === 'home' && currentScreen === 'home'
-          ? 'bg-transparent pointer-events-none p-4 flex items-center justify-end'
-          : 'ios-glass-header px-4 sm:px-6 py-3 flex items-center justify-between backdrop-blur-xl bg-white/90 border-b border-white/40 shadow-sm pointer-events-auto'
-      }`}>
-        {/* Left: App Logo (Hidden on Home screen to let Peshawar floating pill shine) */}
-        {!(activePage === 'home' && currentScreen === 'home') && (
-          <div 
-            onClick={() => { setActivePage('home'); setCurrentScreen('home'); }}
-            className="flex items-center gap-2.5 cursor-pointer group select-none"
-          >
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#22c55e] to-[#16a34a] p-0.5 shadow-md flex items-center justify-center group-hover:scale-105 transition-transform">
-              <img 
-                src="/safar-go-monogram-exact.png" 
-                alt="SafarGo" 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg font-black tracking-tight text-slate-900">
-                  Safar<span className="text-[#16a34a]">Go</span>
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-semibold -mt-0.5 hidden sm:block">
-                Peshawar Rides
-              </span>
-            </div>
+      {/* ======================================================== */}
+      {/* 1. FIXED GLASS HEADER (Reference Design: Hamburger, Logo, Notif, Avatar) */}
+      {/* ======================================================== */}
+      <header className="fixed top-0 left-0 right-0 z-30 px-3.5 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between pointer-events-auto backdrop-blur-xl bg-white/85 border-b border-white/60 shadow-xs transition-all">
+        {/* Left: Hamburger Drawer Menu Button */}
+        <button
+          onClick={() => {
+            sound.playClick();
+            setIsNavDrawerOpen(true);
+          }}
+          aria-label="Open Navigation Menu"
+          title="Menu & Safety"
+          className="w-10 h-10 rounded-2xl bg-white text-slate-800 hover:text-[#16a34a] border border-slate-200/60 shadow-xs flex flex-col items-center justify-center gap-1.5 hover:scale-105 active:scale-95 transition-all shrink-0"
+        >
+          <span className="w-5 h-0.5 bg-slate-800 rounded-full"></span>
+          <span className="w-3.5 h-0.5 bg-[#16a34a] rounded-full self-start ml-2.5"></span>
+        </button>
+
+        {/* Center: SafarGo Logo */}
+        <div 
+          onClick={() => { 
+            setActivePage('home'); 
+            setCurrentScreen('home'); 
+            setSearchSheetState('collapsed'); 
+          }}
+          className="flex items-center gap-2 cursor-pointer select-none group"
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#22c55e] to-[#16a34a] p-0.5 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform">
+            <img 
+              src="/safar-go-monogram-exact.png" 
+              alt="SafarGo" 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
           </div>
-        )}
+          <span className="text-lg font-black tracking-tight text-slate-900">
+            Safar<span className="text-[#16a34a]">Go</span>
+          </span>
+        </div>
 
-        {/* Center: Live GPS / Active Trip Pill (Desktop) */}
-        {activePage === 'home' && currentScreen !== 'home' && (
-          <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 text-white shadow-sm border border-white/10 animate-pulse">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span>
-            <span className="text-xs font-bold text-slate-100">
-              {currentScreen === 'request_sent' && 'Dispatching Driver near Peshawar...'}
-              {currentScreen === 'driver_accepted' && 'Driver Usman Accepted • 2 min away'}
-              {currentScreen === 'live_tracking' && 'En-route to Pickup Point'}
-              {currentScreen === 'driver_arrived' && 'Driver Arrived at Location'}
-              {currentScreen === 'ride_in_progress' && 'Trip to Destination in Progress'}
-              {currentScreen === 'ride_completed' && 'Trip Completed'}
-            </span>
-          </div>
-        )}
-
-        {/* Right Controls */}
-        <div className="flex items-center gap-2.5 pointer-events-auto">
-          {!(activePage === 'home' && currentScreen === 'home') && (
-            <button
-              onClick={() => setActivePage('notifications')}
-              title="Notifications"
-              className="relative w-10 h-10 rounded-2xl bg-slate-100/80 hover:bg-white border border-slate-200/80 hover:border-emerald-400 flex items-center justify-center text-slate-700 hover:text-[#16a34a] hover:scale-105 active:scale-95 transition-all shadow-sm"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white"></span>
-            </button>
-          )}
-
-          {/* Hamburger Drawer Menu Button */}
+        {/* Right: Notifications Bell & User Profile Avatar */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setIsNavDrawerOpen(true)}
-            aria-label="Open Navigation Menu"
-            title="Menu & Safety"
-            className="w-10 h-10 rounded-2xl bg-white text-slate-800 hover:text-[#16a34a] border border-slate-100 shadow-md flex flex-col items-center justify-center gap-1.5 hover:scale-105 active:scale-95 transition-all"
+            onClick={() => {
+              sound.playClick();
+              setActivePage('notifications');
+            }}
+            title="Notifications"
+            className="relative w-9 h-9 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-700 hover:text-[#16a34a] active:scale-95 transition-all shadow-xs"
           >
-            <span className="w-5 h-0.5 bg-slate-800 rounded-full"></span>
-            <span className="w-3.5 h-0.5 bg-[#16a34a] rounded-full self-start ml-2.5"></span>
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white"></span>
+          </button>
+
+          <button
+            onClick={() => {
+              sound.playClick();
+              setActivePage('personal_info');
+            }}
+            title="My Profile"
+            className="relative w-9 h-9 rounded-full ring-2 ring-[#16a34a]/30 overflow-hidden active:scale-95 transition-all shadow-xs"
+          >
+            <img
+              src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80"}
+              alt={currentUser.fullName || "User"}
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#16a34a] ring-1.5 ring-white" />
           </button>
         </div>
       </header>
+
 
       {/* ======================================================== */}
       {/* 2. MAIN VIEW SWITCHER (HOME, HISTORY, WALLET, NOTIFS)   */}
@@ -334,9 +338,14 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               setFromPlace(from);
               setToPlace(to);
               setActivePage('home');
-              setCurrentScreen('categories');
+              setCurrentScreen('home');
+              setSearchSheetState('results_route');
             }}
-            onBackToHome={() => setActivePage('home')}
+            onBackToHome={() => {
+              setActivePage('home');
+              setCurrentScreen('home');
+              setSearchSheetState('collapsed');
+            }}
           />
         )}
 
@@ -478,7 +487,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               <PeshawarRealMap
                 fromPlace={fromPlace}
                 toPlace={toPlace}
-                screenState={currentScreen}
+                screenState={currentScreen === 'home' && searchSheetState === 'results_route' ? 'categories' : currentScreen}
                 vehicleType={selectedCategory}
                 isCustomPinMode={isCustomPinMode}
                 pinModeType={pinModeType}
@@ -490,105 +499,81 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               />
             </div>
 
-            {/* ======================================================== */}
-            {/* FLOATING RIDE BOOKING CARD / DRAWER                      */}
-            {/* On Desktop: Top-Left Floating Panel                      */}
-            {/* On Mobile: Bottom Floating Sheet Above Navbar            */}
-            {/* ======================================================== */}
-            <div className="relative z-30 pointer-events-none w-full h-full flex flex-col justify-end p-3 sm:p-5 pb-20 sm:pb-24 max-w-lg mx-auto">
-              <div className="pointer-events-auto w-full max-h-[78vh] overflow-y-auto no-scrollbar rounded-[32px] bg-white p-4 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.13)] border border-slate-100 transition-all">
-                
-                {/* ---------------------------------------------------- */}
-                {/* SCREEN 1: HOME SEARCH CARD (Exact Reference Design)   */}
-                {/* ---------------------------------------------------- */}
-                {currentScreen === 'home' && (
-                  <div className="space-y-3">
-                    {/* 1. From (Pickup) Box */}
-                    <div
-                      onClick={() => {
-                        sound.playClick();
-                        setPinModeType('from');
-                        setIsCustomPinMode(true);
-                      }}
-                      className="bg-[#f8faf9] hover:bg-[#f0f4f2] rounded-2xl p-3 sm:p-3.5 flex items-center justify-between cursor-pointer transition-colors border border-slate-100/80 group active:scale-[0.99]"
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-full bg-[#16a34a] flex items-center justify-center text-white shrink-0 shadow-sm">
-                          <MapPin className="w-5 h-5 fill-white text-white" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <span className="text-[11px] font-bold text-[#16a34a] block leading-tight">
-                            From
-                          </span>
-                          <span className="text-xs sm:text-sm font-semibold text-slate-800 truncate block">
-                            {fromPlace ? fromPlace.name : 'Your current location'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                        <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[#16a34a]">
-                          <Navigation className="w-3.5 h-3.5 rotate-45 fill-[#16a34a] text-[#16a34a]" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 2. To (Destination) Box */}
-                    <div
-                      onClick={() => {
-                        sound.playPop();
-                        setActivePage('search');
-                      }}
-                      className="bg-[#f8faf9] hover:bg-[#f0f4f2] rounded-2xl p-3 sm:p-3.5 flex items-center justify-between cursor-pointer transition-colors border border-slate-100/80 group active:scale-[0.99]"
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-full bg-[#f43f5e] flex items-center justify-center text-white shrink-0 shadow-sm">
-                          <MapPin className="w-5 h-5 fill-white text-white" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <span className="text-[11px] font-bold text-[#f43f5e] block leading-tight">
-                            To
-                          </span>
-                          <span className="text-xs sm:text-sm font-semibold text-slate-400 group-hover:text-slate-700 truncate block">
-                            {toPlace && toPlace.name ? toPlace.name : 'Where are you going?'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0">
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                      </div>
-                    </div>
-
-                    {/* 3. Search Ride Button (Vibrant Green) */}
-                    <button
-                      onClick={() => {
-                        sound.playSuccess();
-                        setCurrentScreen('categories');
-                      }}
-                      className="w-full py-3.5 sm:py-4 rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#16a34a]/30 flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
-                    >
-                      <Search className="w-5 h-5 stroke-[2.5]" />
-                      <span>Search Ride</span>
-                    </button>
-
-                    {/* 4. Safety Assurance Banner (Safe Rides • Trusted Drivers • Peshawar Only) */}
-                    <div
-                      onClick={() => {
-                        sound.playClick();
-                        setIsNavDrawerOpen(true);
-                      }}
-                      className="bg-[#f0fdf4] hover:bg-[#e7faed] border border-[#dcfce7] rounded-full py-2.5 px-4 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-[#16a34a] cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-[#16a34a]" />
-                        <span>Safe Rides &nbsp;•&nbsp; Trusted Drivers &nbsp;•&nbsp; Peshawar Only</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-[#16a34a]" />
-                    </div>
+            {/* Map Floating Overlays (Visible when collapsed on Home) */}
+            {currentScreen === 'home' && searchSheetState === 'collapsed' && (
+              <>
+                {/* Weather Chip (Bottom Left above search pill) */}
+                <div className="absolute left-4 bottom-[150px] sm:bottom-[160px] z-20 pointer-events-auto select-none animate-fade-in">
+                  <div className="px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <span className="text-sm">⛅</span>
+                    <span>22°C</span>
+                    <span className="text-[10px] text-slate-500 font-semibold">Peshawar</span>
                   </div>
-                )}
+                </div>
+
+                {/* Map Control Buttons (Bottom Right above search pill) */}
+                <div className="absolute right-4 bottom-[150px] sm:bottom-[160px] z-20 pointer-events-auto flex flex-col gap-2 select-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playClick();
+                      if ('geolocation' in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            const nearest = getNearestPeshawarPlace(pos.coords.latitude, pos.coords.longitude);
+                            setFromPlace(nearest);
+                            sound.playPop();
+                          },
+                          (err) => console.warn(err)
+                        );
+                      }
+                    }}
+                    title="Current GPS Location"
+                    className="w-10 h-10 rounded-full bg-white/85 backdrop-blur-md border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center text-[#16a34a] hover:bg-white active:scale-95 transition-all"
+                  >
+                    <Locate className="w-5 h-5 stroke-[2.2]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => sound.playPop()}
+                    title="Map Layers"
+                    className="w-10 h-10 rounded-full bg-white/85 backdrop-blur-md border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center text-slate-700 hover:text-[#16a34a] hover:bg-white active:scale-95 transition-all"
+                  >
+                    <Layers className="w-5 h-5 stroke-[2]" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Reusable RideSearchSheet (Collapsed pill, Half sheet, Full search, Route preview) */}
+            {currentScreen === 'home' && (
+              <RideSearchSheet
+                fromPlace={fromPlace}
+                toPlace={toPlace}
+                searchState={searchSheetState}
+                onStateChange={(st) => setSearchSheetState(st)}
+                onSelectFrom={(p) => setFromPlace(p)}
+                onSelectTo={(p) => setToPlace(p)}
+                selectedVehicle={selectedCategory}
+                onSelectVehicle={(v) => setSelectedCategory(v)}
+                onRequestRide={() => {
+                  setSearchSheetState('collapsed');
+                  setCurrentScreen('request_sent');
+                }}
+                metrics={metrics}
+                onOpenSafetyDrawer={() => setIsNavDrawerOpen(true)}
+              />
+            )}
+
+            {/* ======================================================== */}
+            {/* FLOATING DRIVER DISPATCH & ACTIVE TRIP CARD              */}
+            {/* Active only when booking flow is engaged                 */}
+            {/* ======================================================== */}
+            {currentScreen !== 'home' && (
+              <div className="relative z-30 pointer-events-none w-full h-full flex flex-col justify-end p-3 sm:p-5 pb-20 sm:pb-24 max-w-lg mx-auto">
+                <div className="pointer-events-auto w-full max-h-[78vh] overflow-y-auto no-scrollbar rounded-[32px] bg-white p-4 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.13)] border border-slate-100 transition-all">
+
 
                 {/* ---------------------------------------------------- */}
                 {/* SCREEN 2: RIDE CATEGORIES (Bike, Car, Cargo)         */}
@@ -970,8 +955,9 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
       </main>
 
       {/* ======================================================== */}
@@ -983,13 +969,13 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
           if (tab === 'home') {
             setActivePage('home');
             setCurrentScreen('home');
+            setSearchSheetState('collapsed');
           } else if (tab === 'history') {
             setActivePage('history');
           } else if (tab === 'book') {
             setActivePage('home');
-            if (currentScreen === 'home') {
-              setCurrentScreen('categories');
-            }
+            setCurrentScreen('home');
+            setSearchSheetState('half_sheet');
           } else if (tab === 'wallet') {
             setActivePage('wallet');
           } else if (tab === 'profile') {

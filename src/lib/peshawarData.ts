@@ -701,6 +701,15 @@ export function saveRecentSearch(place: PeshawarPlace) {
   }
 }
 
+export function clearRecentSearches() {
+  try {
+    localStorage.removeItem(RECENT_SEARCHES_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+
 // Calculate realistic distance and fares
 export function calculateTripMetrics(fromName: string, toName: string) {
   const from = PESHAWAR_PLACES.find(p => p.name.toLowerCase().includes(fromName.toLowerCase())) || PESHAWAR_PLACES[0];
