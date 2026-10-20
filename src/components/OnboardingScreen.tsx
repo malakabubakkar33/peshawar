@@ -12,22 +12,28 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) 
 
   const slides = [
     {
-      id: 'drive-your-way',
-      title: 'Drive Your Way',
-      subtitle: 'Earn More • Explore More',
-      description: 'Peshawar’s premier smart mobility network. Ride as a passenger or register your bike / car to earn flexible daily income.'
+      id: 'step-1',
+      titleLine1: 'Your Ride,',
+      titleLine2: 'Just a Tap Away',
+      titleLine2Color: 'text-[#16a34a]',
+      description: 'Book a ride in seconds and reach your destination with ease. Fast, safe and reliable.',
+      illustration: '/onboarding-ill-1.png'
     },
     {
-      id: 'instant-rides',
-      title: 'Instant City Rides',
-      subtitle: 'Quick Bikes & Comfort Cars',
-      description: 'Beat the traffic from Saddar Cantt to Hayatabad, University Town & Ring Road with honest, upfront pricing.'
+      id: 'step-2',
+      titleLine1: 'Safe & Reliable',
+      titleLine2: 'Every Time',
+      titleLine2Color: 'text-[#16a34a]',
+      description: 'Verified drivers, real-time tracking and 24/7 support for your safety and peace of mind.',
+      illustration: '/onboarding-ill-2.png'
     },
     {
-      id: 'smart-courier',
-      title: 'Safe & Tracked Travel',
-      subtitle: 'Verified Local Peshawar Drivers',
-      description: 'Real-time GPS navigation, emergency helplines, and 24/7 dedicated Peshawar customer assistance.'
+      id: 'step-3',
+      titleLine1: 'Explore Peshawar',
+      titleLine2: 'With SafarGo',
+      titleLine2IsCustom: true,
+      description: "From historic places to your daily needs, we're here to take you anywhere in the city.",
+      illustration: '/onboarding-ill-3.png'
     }
   ];
 
@@ -42,156 +48,115 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) 
   };
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.x < -45 && currentStep < 2) {
+    if (info.offset.x < -40 && currentStep < 2) {
       sound.playPop();
       setCurrentStep((prev) => (prev + 1) as 0 | 1 | 2);
-    } else if (info.offset.x > 45 && currentStep > 0) {
+    } else if (info.offset.x > 40 && currentStep > 0) {
       sound.playPop();
       setCurrentStep((prev) => (prev - 1) as 0 | 1 | 2);
     }
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#f3f9ee] flex flex-col justify-between items-center overflow-hidden select-none z-40 font-sans">
+    <div className="fixed inset-0 w-full h-full bg-[#fbfdfa] flex flex-col justify-between items-center px-6 pt-10 pb-8 sm:pb-10 overflow-hidden select-none z-40 font-sans">
       
-      {/* 1. TOP BACKGROUND WAVY CONTOURS (Exact Match to Reference Image) */}
-      <div className="absolute top-0 inset-x-0 h-72 pointer-events-none z-0 overflow-hidden">
-        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-60">
-          <path 
-            d="M -20 60 C 80 30, 200 90, 420 30 L 420 0 L -20 0 Z" 
-            fill="#e2f4d8" 
-          />
-          <path 
-            d="M -20 120 C 120 70, 240 140, 420 80 L 420 0 L -20 0 Z" 
-            fill="#ebf7e4" 
-            opacity="0.8"
-          />
-          <path 
-            d="M -20 180 C 100 130, 260 190, 420 140 L 420 0 L -20 0 Z" 
-            fill="#f5faef" 
-            opacity="0.9"
-          />
-        </svg>
+      {/* 1. TOP BAR: Skip Button (Exact Match to Image 1) */}
+      <div className="w-full max-w-sm flex items-center justify-end z-20">
+        <button
+          onClick={() => {
+            sound.playClick();
+            onFinish();
+          }}
+          className="text-sm font-bold text-[#16a34a] hover:text-emerald-700 active:scale-95 transition-all cursor-pointer py-1 px-2"
+        >
+          Skip
+        </button>
       </div>
 
-      {/* 2. TOP BRANDING HEADER & SKIP BUTTON */}
-      <div className="relative z-20 w-full max-w-md pt-7 sm:pt-9 px-5 flex items-center justify-between">
-        <div className="w-12" /> {/* Left spacer for balance */}
-
-        {/* Center Logo & Wordmark */}
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center filter drop-shadow-sm">
-            <img 
-              src="/safar-go-monogram-exact.png" 
-              alt="SafarGo" 
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/safar-go-monogram-clean.png';
-              }}
-            />
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center justify-center -mt-1">
-            <span className="text-[#0f172a]">Safar</span>
-            <span className="text-[#16a34a] ml-0.5">Go</span>
-          </h1>
-
-          <p className="text-[11px] font-bold text-slate-500 tracking-[0.22em] uppercase mt-0.5">
-            Ride &nbsp;&bull;&nbsp; Explore &nbsp;&bull;&nbsp; Peshawar
-          </p>
-        </div>
-
-        {/* Right Skip Button */}
-        <div className="w-12 flex justify-end">
-          <button
-            onClick={() => {
-              sound.playClick();
-              onFinish();
-            }}
-            className="px-3 py-1 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-slate-900 border border-emerald-200/90 text-xs font-bold shadow-2xs active:scale-95 transition-all"
-          >
-            Skip
-          </button>
-        </div>
-      </div>
-
-      {/* 3. CENTER HERO SCENE: Iconic Bab-e-Khyber Peshawar Valley */}
+      {/* 2. CENTER SWIPEABLE CONTENT: Illustration + Dynamic Island Halo */}
       <motion.div 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
+        dragElastic={0.25}
         onDragEnd={handleDragEnd}
-        className="relative z-10 w-full flex-1 flex items-center justify-center max-w-md px-3 -my-3 cursor-grab active:cursor-grabbing overflow-hidden"
+        className="relative w-full max-w-sm flex-1 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing my-2"
       >
-        <div className="relative w-full h-full max-h-[380px] flex items-center justify-center">
-          <img 
-            src="/peshawar-gate-scenic.jpg" 
-            alt="Peshawar Scenic Gate" 
-            className="w-full h-full object-cover object-center rounded-3xl shadow-xl filter saturate-[1.08] contrast-[1.03]"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/safar-go-peshawar-splash.png';
-            }}
-          />
-          <div className="absolute inset-0 rounded-3xl ring-1 ring-black/5 pointer-events-none" />
-        </div>
-      </motion.div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, scale: 0.94, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.94, x: -20 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full flex flex-col items-center"
+          >
+            {/* Illustration Container with Soft Mint Background Halo */}
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center mb-6">
+              {/* Soft Radial Ambient Halo */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#e5f7db]/70 via-[#edf9e6]/50 to-transparent blur-md pointer-events-none" />
 
-      {/* 4. BOTTOM CONVEX CURVED DOME & INTERACTIVE SLIDES */}
-      <div className="relative z-20 w-full max-w-md pt-5 pb-8 px-6 bg-white/95 backdrop-blur-md rounded-t-[44px] sm:rounded-t-[52px] shadow-[0_-12px_40px_rgba(0,0,0,0.06)] border-t border-emerald-100 flex flex-col items-center text-center">
-        
-        {/* Animated Slide Content */}
-        <div className="w-full min-h-[92px] flex flex-col items-center justify-center">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: 'easeOut' }}
-              className="flex flex-col items-center"
-            >
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                {slides[currentStep].title}
-              </h2>
-              <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                {slides[currentStep].subtitle}
-              </p>
-              <p className="text-[11px] text-slate-400 max-w-xs mt-1.5 leading-relaxed line-clamp-2">
+              {/* Cropped Peshawar Scenic Illustration */}
+              <img 
+                src={slides[currentStep].illustration} 
+                alt={slides[currentStep].titleLine1}
+                className="w-full h-full object-contain relative z-10 filter drop-shadow-[0_8px_20px_rgba(22,163,74,0.08)] pointer-events-none select-none"
+              />
+            </div>
+
+            {/* Pagination Dots (Exact Match: Elongated Active Pill + Circular Dots) */}
+            <div className="flex items-center gap-2 mb-6">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    sound.playPop();
+                    setCurrentStep(idx as 0 | 1 | 2);
+                  }}
+                  className={`h-2 transition-all duration-300 rounded-full ${
+                    currentStep === idx 
+                      ? 'w-6 bg-[#16a34a]' 
+                      : 'w-2 bg-slate-200 hover:bg-slate-300'
+                  }`}
+                  aria-label={`Slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* Typography Section (Exact Copy from Image 1) */}
+            <div className="w-full text-left px-2 sm:px-4">
+              <h1 className="text-2xl sm:text-[28px] font-black leading-tight tracking-tight text-[#0f172a]">
+                {slides[currentStep].titleLine1}
+                <br />
+                {slides[currentStep].titleLine2IsCustom ? (
+                  <span>
+                    With <span className="text-[#16a34a]">SafarGo</span>
+                  </span>
+                ) : (
+                  <span className={slides[currentStep].titleLine2Color}>
+                    {slides[currentStep].titleLine2}
+                  </span>
+                )}
+              </h1>
+
+              <p className="text-xs sm:text-[13px] text-slate-500 font-medium leading-relaxed mt-3">
                 {slides[currentStep].description}
               </p>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
 
-        {/* 3-Segment Capsule Progress Pill (Exact Match to User's Screenshot) */}
-        <div className="flex items-center gap-1.5 my-4">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                sound.playPop();
-                setCurrentStep(idx as 0 | 1 | 2);
-              }}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                currentStep === idx 
-                  ? 'w-10 bg-[#16a34a] shadow-sm' 
-                  : 'w-6 bg-emerald-100 hover:bg-emerald-200'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Action Button */}
+      {/* 3. BOTTOM BUTTON */}
+      <div className="w-full max-w-sm z-20 mt-2">
         <button
           onClick={handleNext}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#16a34a] to-[#22c55e] text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/25 hover:brightness-105 active:scale-98 transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#16a34a] to-[#22c55e] hover:brightness-105 active:scale-98 text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
         >
           <span>{currentStep === 2 ? 'Get Started' : 'Continue'}</span>
           {currentStep === 2 ? (
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           ) : (
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           )}
         </button>
       </div>
