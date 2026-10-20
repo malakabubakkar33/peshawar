@@ -107,6 +107,31 @@ export function App() {
     return () => window.removeEventListener('safargo-driver-approved', handleDriverApprovedEvent);
   }, [currentUser]);
 
+  // Real In-App Push Notification Toast State & Listener
+  const [activePushToast, setActivePushToast] = useState<{
+    title: string;
+    body: string;
+    icon?: string;
+    timestamp?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const handlePushEvent = (e: any) => {
+      setActivePushToast(e.detail);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setActivePushToast(null);
+      }, 5500);
+    };
+
+    window.addEventListener('safargo-inapp-push', handlePushEvent);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('safargo-inapp-push', handlePushEvent);
+    };
+  }, []);
+
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
     userStorage.setSession(user);
@@ -220,6 +245,7 @@ export function App() {
                 onSuccessLogin={handleLoginSuccess}
                 onNavigateToSignup={() => setCurrentView('signup')}
                 onOpenForgotPassword={() => setIsForgotPasswordOpen(true)}
+                onBack={() => setShowOnboarding(true)}
               />
             </motion.div>
           )}
@@ -372,6 +398,39 @@ export function App() {
           setCurrentView('login');
         }}
       />
+
+      {/* Real In-App Push Notification Floating Banner */}
+      <AnimatePresence>
+        {activePushToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -40, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+            className="fixed top-4 inset-x-4 max-w-md mx-auto z-50 pointer-events-auto"
+          >
+            <div className="bg-slate-900/95 text-white backdrop-blur-md rounded-2xl p-4 shadow-2xl border border-lime-500/30 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3ebd19] to-lime-300 p-0.5 shrink-0 flex items-center justify-center shadow-md">
+                <img src="/safar-go-monogram-exact.png" alt="SafarGo" className="w-full h-full object-contain rounded-[10px]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold text-lime-400 truncate">{activePushToast.title}</h4>
+                  <span className="text-[10px] text-slate-400">{activePushToast.timestamp || 'Now'}</span>
+                </div>
+                <p className="text-xs text-slate-200 mt-0.5 leading-relaxed">{activePushToast.body}</p>
+              </div>
+              <button
+                onClick={() => setActivePushToast(null)}
+                className="text-slate-400 hover:text-white p-1 transition cursor-pointer text-sm font-bold"
+                aria-label="Dismiss notification"
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

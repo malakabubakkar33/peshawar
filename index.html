@@ -2,17 +2,111 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/safar-go-emblem.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#84cc16" />
-    <meta name="description" content="Safar Go - Peshawar's Next-Generation Ride Booking, Cargo Delivery & Driver Network. Seamless travel across Hayatabad, University Road, Saddar, and beyond." />
-    <title>Safar Go | سفر گو - Peshawar Ride Booking & Cargo</title>
-    <!-- Modern Typography: Plus Jakarta Sans & Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/safar-go-monogram-exact.png" />
+    <link rel="apple-touch-icon" href="/safar-go-monogram-exact.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>SafarGo | سفر گو - Peshawar Smart Rides, Bike Taxi & Urban Mobility</title>
+    <meta name="title" content="SafarGo | سفر گو - Peshawar Smart Rides, Bike Taxi & Urban Mobility" />
+    <meta name="description" content="Book instant bike rides, comfortable cars, and parcel delivery across Peshawar with SafarGo. Connecting Hayatabad, Saddar, University Town, Ring Road & beyond with safe, reliable travel." />
+    <meta name="keywords" content="SafarGo, Peshawar Ride Booking, Peshawar Bike Taxi, Peshawar Cab, Peshawar Transport, Hayatabad Taxi, Saddar Peshawar Cab, BRT Peshawar, Safar Go Pakistan, Courier Delivery Peshawar" />
+    <meta name="author" content="SafarGo Mobility Services" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://safargo.pk/" />
+
+    <!-- Geolocation & Regional SEO -->
+    <meta name="geo.region" content="PK-KP" />
+    <meta name="geo.placename" content="Peshawar" />
+    <meta name="geo.position" content="34.0151;71.5249" />
+    <meta name="ICBM" content="34.0151, 71.5249" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://safargo.pk/" />
+    <meta property="og:title" content="SafarGo | سفر گو - Peshawar Smart Rides, Bike Taxi & Cargo" />
+    <meta property="og:description" content="Safe, fast, and affordable rides across Peshawar. Hop on a bike or book a car with SafarGo." />
+    <meta property="og:image" content="/safar-go-monogram-exact.png" />
+    <meta property="og:locale" content="en_PK" />
+    <meta property="og:site_name" content="SafarGo Peshawar" />
+
+    <!-- Twitter Card SEO -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://safargo.pk/" />
+    <meta property="twitter:title" content="SafarGo | سفر گو - Peshawar Smart Rides" />
+    <meta property="twitter:description" content="Fast, reliable bike taxi, car rides, and cargo delivery in Peshawar." />
+    <meta property="twitter:image" content="/safar-go-monogram-exact.png" />
+
+    <!-- Mobile Web App & Theme Color -->
+    <meta name="theme-color" content="#3ebd19" />
+    <meta name="msapplication-navbutton-color" content="#3ebd19" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Fast Preconnect for Google Fonts & Leaflet Tiles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
+    
+    <!-- Modern Typography: Plus Jakarta Sans, Outfit & Urdu Nastaliq -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
+
+    <!-- Structured Data (JSON-LD) for Instant Google SEO Indexing & Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "SafarGo",
+          "alternateName": "سفر گو پشاور",
+          "operatingSystem": "All",
+          "applicationCategory": "TravelApplication",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "PKR"
+          },
+          "description": "Peshawar smart ride booking, bike taxi, car cab, and instant courier cargo delivery service in Khyber Pakhtunkhwa.",
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "1280"
+          }
+        },
+        {
+          "@type": "TaxiService",
+          "name": "SafarGo Mobility Peshawar",
+          "provider": {
+            "@type": "LocalBusiness",
+            "name": "SafarGo Peshawar",
+            "telephone": "+92-332-8888249",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "University Road, Saddar & Hayatabad",
+              "addressLocality": "Peshawar",
+              "addressRegion": "Khyber Pakhtunkhwa",
+              "postalCode": "25000",
+              "addressCountry": "PK"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 34.0151,
+              "longitude": 71.5249
+            }
+          },
+          "areaServed": {
+            "@type": "City",
+            "name": "Peshawar"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
-  <body class="bg-gradient-to-br from-slate-50 via-lime-50/30 to-zinc-100 text-slate-800 antialiased min-h-screen selection:bg-lime-300 selection:text-lime-950">
+  <body class="bg-[#fafdf8] text-slate-800 antialiased min-h-screen selection:bg-[#3ebd19]/25 selection:text-slate-900 overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

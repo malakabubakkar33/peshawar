@@ -1,4 +1,5 @@
 import { userStorage } from './supabase';
+import { pushNotificationService } from './pushNotificationService';
 
 export interface DriverApplication {
   id: string;
@@ -312,7 +313,13 @@ export const adminManager = {
         console.error('Failed to save notification:', err);
       }
 
-      // Dispatch real push event to notify driver app instance
+      // Dispatch real push event and OS Notification to notify driver
+      pushNotificationService.sendNotification({
+        title: '🎉 Driver Application Approved!',
+        body: `Mubarak ho ${target.fullName}! SafarGo Peshawar admin team ne aap ki application approve kar di hai. Aap ab rides accept kar sakte hain.`,
+        tag: 'driver-approval'
+      });
+
       window.dispatchEvent(new CustomEvent('safargo-driver-approved', { detail: target }));
 
       return target;

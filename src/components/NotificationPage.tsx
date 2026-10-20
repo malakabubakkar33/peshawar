@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Bell, CheckCheck, Trash2, 
-  Car, Sparkles, Shield, Info, ChevronRight 
+  Car, Sparkles, Shield, Info, ChevronRight, BellRing, CheckCircle2 
 } from 'lucide-react';
 import { SAMPLE_NOTIFICATIONS, type AppNotification } from '../lib/peshawarData';
+import { pushNotificationService } from '../lib/pushNotificationService';
+import { sound } from '../lib/sound';
 
 interface NotificationPageProps {
   onBackToHome: () => void;
@@ -17,6 +19,24 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({
 }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>(SAMPLE_NOTIFICATIONS);
   const [activeTab, setActiveTab] = useState<'all' | 'ride' | 'promo' | 'security'>('all');
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    setPushStatus(pushNotificationService.getPermission());
+  }, []);
+
+  const handleEnablePush = async () => {
+    sound.playClick();
+    const result = await pushNotificationService.requestPermission();
+    setPushStatus(result);
+    if (result === 'granted') {
+      sound.playSuccess();
+      pushNotificationService.sendNotification({
+        title: 'Push Notifications Active! 🔔',
+        body: 'Ab aap ko SafarGo rides aur alerts ki realtime notifications milengi.'
+      });
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -93,6 +113,38 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Push Notification Device Permission Banner */}
+      <div className="mb-6 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            pushStatus === 'granted' 
+              ? 'bg-emerald-100 text-emerald-700' 
+              : 'bg-amber-100 text-amber-700'
+          }`}>
+            {pushStatus === 'granted' ? <CheckCircle2 className="w-5 h-5" /> : <BellRing className="w-5 h-5 animate-pulse" />}
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-800">
+              {pushStatus === 'granted' ? 'Push Notifications Active' : 'Device Push Notifications'}
+            </h4>
+            <p className="text-xs text-slate-500">
+              {pushStatus === 'granted' 
+                ? 'Aap ko live Peshawar ride status aur OTP updates mobile screen par milengi.' 
+                : 'Realtime updates pane ke liye mobile/browser notifications on karein.'}
+            </p>
+          </div>
+        </div>
+
+        {pushStatus !== 'granted' && (
+          <button
+            onClick={handleEnablePush}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#48bb13] to-[#3ebd19] text-white text-xs font-bold shadow-md hover:brightness-105 active:scale-95 transition-all whitespace-nowrap cursor-pointer"
+          >
+            Enable Notifications
+          </button>
+        )}
       </div>
 
       {/* Categories Filter Tabs */}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
-import { User, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Check } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle, Check } from 'lucide-react';
 import { Logo } from './Logo';
 import { loginUserWithSupabase, type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
@@ -9,12 +9,14 @@ interface LoginPageProps {
   onSuccessLogin: (user: UserAccount) => void;
   onNavigateToSignup: () => void;
   onOpenForgotPassword: () => void;
+  onBack?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onSuccessLogin,
   onNavigateToSignup,
-  onOpenForgotPassword
+  onOpenForgotPassword,
+  onBack
 }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -104,7 +106,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col items-center justify-between px-4 py-8 sm:py-10 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
+    <div className="relative w-full min-h-screen flex flex-col items-center justify-between px-4 pt-3 sm:pt-4 pb-8 sm:pb-10 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
       {/* ===== BACKGROUND DECORATIVE GRAPHICS (Exact Reference Match) ===== */}
       
@@ -186,8 +188,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         animate="visible"
         className="relative z-10 w-full max-w-[440px] flex flex-col items-center mx-auto"
       >
+        {/* Top Header Bar with Back Button & Brand Badge */}
+        <div className="w-full flex items-center justify-between mb-2">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-sm border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="w-10 h-10" />
+          )}
+          <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-lime-100/80 text-lime-800 border border-lime-200/90 shadow-2xs">
+            SafarGo Peshawar
+          </span>
+        </div>
+
         {/* 1. TOP LOGO SECTION (Safar Go with exact monogram) */}
-        <motion.div variants={itemVariants} className="pt-2 pb-5 flex flex-col items-center">
+        <motion.div variants={itemVariants} className="pt-1 pb-4 flex flex-col items-center">
           <Logo size="md" showSubtitle={true} />
         </motion.div>
 

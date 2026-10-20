@@ -14,6 +14,7 @@ import {
 } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
 import { PeshawarRealMap } from './PeshawarRealMap';
+import { LocationPermissionModal } from './LocationPermissionModal';
 import { HistoryPage } from './HistoryPage';
 import { WalletPage } from './WalletPage';
 import { NotificationPage } from './NotificationPage';
@@ -58,6 +59,11 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   const [fromPlace, setFromPlace] = useState<PeshawarPlace>(PESHAWAR_PLACES[0]); // Islamia College Peshawar
   const [toPlace, setToPlace] = useState<PeshawarPlace>(PESHAWAR_PLACES[3]);     // Saddar Cantt Bazaar
   const [selectedCategory, setSelectedCategory] = useState<'bike' | 'car' | 'cargo'>('car');
+
+  // Mandatory Location Permission State (Device GPS must be enabled)
+  const [isLocationGranted, setIsLocationGranted] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && !!sessionStorage.getItem('safargo_user_lat');
+  });
 
   // Interactive Passenger Experience States (Chat, Calling, Custom Pins)
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -1065,6 +1071,14 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
         onClose={() => setIsCallOpen(false)}
         driverName="Usman Khan"
         vehicleModel="Honda Civic • White (PWA-7421)"
+      />
+
+      {/* Mandatory Device Location (GPS) Permission Modal */}
+      <LocationPermissionModal
+        isOpen={!isLocationGranted}
+        onLocationGranted={(_coords) => {
+          setIsLocationGranted(true);
+        }}
       />
     </div>
   );

@@ -101,7 +101,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   const [etaRemaining, setEtaRemaining] = useState('3 min');
   const [selectedCity, setSelectedCity] = useState('Peshawar');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  const [mapLayerStyle, setMapLayerStyle] = useState<'voyager' | 'streets'>('voyager');
+  const [mapLayerStyle, setMapLayerStyle] = useState<'voyager' | 'streets' | 'satellite'>('voyager');
   const animationFrameRef = useRef<number | null>(null);
 
   // Initialize Map Once
@@ -130,23 +130,48 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     };
   }, []);
 
-  // Toggle Map Style
+  // Toggle Map Style: Cycle between Voyager (Clean Vector) -> Streets (OSM) -> Satellite (Esri Imagery)
   const toggleMapStyle = () => {
     if (!mapInstanceRef.current) return;
-    const nextStyle = mapLayerStyle === 'voyager' ? 'streets' : 'voyager';
+    
+    let nextStyle: 'voyager' | 'streets' | 'satellite' = 'streets';
+    if (mapLayerStyle === 'voyager') nextStyle = 'streets';
+    else if (mapLayerStyle === 'streets') nextStyle = 'satellite';
+    else nextStyle = 'voyager';
+
     setMapLayerStyle(nextStyle);
 
     if (tileLayerRef.current) {
       tileLayerRef.current.remove();
     }
 
-    const newUrl = nextStyle === 'voyager'
-      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const mapboxToken = (import.meta as any).env?.VITE_MAPBOX_TOKEN;
+    const googleKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_KEY;
+
+    let newUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    let maxZoom = 19;
+    let subdomains = 'abcd';
+
+    if (nextStyle === 'satellite') {
+      newUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      maxZoom = 19;
+      subdomains = '';
+    } else if (nextStyle === 'streets') {
+      if (mapboxToken) {
+        newUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`;
+        subdomains = '';
+      } else if (googleKey) {
+        newUrl = `https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${googleKey}`;
+        subdomains = '';
+      } else {
+        newUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        subdomains = 'abc';
+      }
+    }
 
     tileLayerRef.current = L.tileLayer(newUrl, {
-      maxZoom: 19,
-      subdomains: 'abcd'
+      maxZoom,
+      ...(subdomains ? { subdomains } : {})
     }).addTo(mapInstanceRef.current);
   };
 

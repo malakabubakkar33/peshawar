@@ -424,7 +424,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   const activeAvatar = customAvatarPreview || selectedAvatar;
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col items-center justify-between px-4 py-6 sm:py-8 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
+    <div className="relative w-full min-h-screen flex flex-col items-center px-4 pt-3 sm:pt-4 pb-8 sm:pb-12 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
       {/* Background Corner Wave Graphics */}
       <div className="fixed top-0 left-0 w-[160px] sm:w-[200px] h-[160px] sm:h-[200px] pointer-events-none z-0 select-none opacity-75">
@@ -441,7 +441,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
       </div>
 
       {/* Main Form Container */}
-      <div className="relative z-10 w-full max-w-[420px] flex flex-col mx-auto my-auto">
+      <div className="relative z-10 w-full max-w-[420px] flex flex-col mx-auto pt-1 sm:pt-2">
         
         {/* Error Notification Toast */}
         <AnimatePresence>
@@ -469,14 +469,20 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
             exit={{ opacity: 0, x: -20 }}
             className="w-full flex flex-col"
           >
-            {/* Top Back Button */}
-            <button
-              type="button"
-              onClick={onBackToLogin}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            {/* Top Bar with Back Button & Step indicator */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <button
+                type="button"
+                onClick={onBackToLogin}
+                className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Back to login"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                Step 1 of 5
+              </span>
+            </div>
 
             {/* Title & Subtitle */}
             <div className="mb-6">
@@ -662,14 +668,20 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
             exit={{ opacity: 0, x: -20 }}
             className="w-full flex flex-col"
           >
-            {/* Top Back Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentStep(1)}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            {/* Top Bar with Back Button & Step indicator */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Back to personal details"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-lime-100 text-lime-800 border border-lime-200">
+                Step 2 of 5
+              </span>
+            </div>
 
             {/* Title & Email Badge */}
             <div className="mb-6">
@@ -764,14 +776,20 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
             exit={{ opacity: 0, x: -20 }}
             className="w-full flex flex-col"
           >
-            {/* Top Back Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentStep('otp')}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            {/* Top Bar with Back Button & Step indicator */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <button
+                type="button"
+                onClick={() => setCurrentStep('otp')}
+                className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Back to verification"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                Step 3 of 5
+              </span>
+            </div>
 
             {/* Title & Subtitle */}
             <div className="mb-6">
@@ -878,14 +896,20 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
             exit={{ opacity: 0, x: -20 }}
             className="w-full flex flex-col"
           >
-            {/* Top Back Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentStep(2)}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            {/* Top Bar with Back Button & Step indicator */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Back to security"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                Step 4 of 5
+              </span>
+            </div>
 
             {/* Title & Subtitle */}
             <div className="mb-6">
@@ -1007,14 +1031,20 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
             exit={{ opacity: 0, x: -20 }}
             className="w-full flex flex-col"
           >
-            {/* Top Back Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentStep(3)}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            {/* Top Bar with Back Button & Step indicator */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                aria-label="Back to profile photo"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                Step 5 of 5
+              </span>
+            </div>
 
             {/* Title */}
             <div className="mb-6">

@@ -267,7 +267,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#fafdf8] px-4 py-6 sm:py-8 flex flex-col items-center selection:bg-[#3ebd19]/20 selection:text-slate-900">
+    <div className="relative w-full min-h-screen bg-[#fafdf8] px-4 pt-3 sm:pt-4 pb-10 flex flex-col items-center selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
       {/* Background Subtle Corner Waves */}
       <div className="fixed top-0 left-0 w-44 h-44 pointer-events-none z-0 select-none opacity-60">
@@ -276,19 +276,20 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
         </svg>
       </div>
 
-      <div className="relative z-10 w-full max-w-[440px] flex flex-col mx-auto pb-10">
+      <div className="relative z-10 w-full max-w-[440px] flex flex-col mx-auto pt-1">
         
         {/* Top Bar with Back Button */}
         <div className="flex items-center justify-between mb-4">
           <button
             type="button"
             onClick={currentStep === 'payment' ? () => setCurrentStep('form') : onBack}
-            className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            aria-label="Go back"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-2xs">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Peshawar Driver Registration</span>
           </div>
