@@ -395,6 +395,9 @@ export function App() {
         }}
       />
 
+      {/* Real In-App Security OTP Floating Banner */}
+      <OtpNotificationBanner />
+
       {/* PWA Offline Network Detection Toast */}
       <OfflineIndicator />
 

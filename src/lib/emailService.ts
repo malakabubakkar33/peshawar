@@ -1,6 +1,8 @@
 // Email Service for SafarGo Peshawar using Resend API
 // Sends real verification OTP emails to user's Gmail/Email address
 
+import { emitOtpNotification } from './peshawarData';
+
 export interface SendOtpResult {
   success: boolean;
   messageId?: string;
@@ -8,7 +10,13 @@ export interface SendOtpResult {
   code: string;
 }
 
-const RESEND_API_URL = 'https://api.resend.com/emails';
+// In local development, route through Vite proxy to eliminate browser CORS errors
+const getResendEndpoint = () => {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return '/api/resend/emails';
+  }
+  return 'https://api.resend.com/emails';
+};
 
 /**
  * Generate a cryptographically strong 6-digit numeric OTP code
@@ -32,6 +40,7 @@ export async function sendVerificationOtpEmail(
     import.meta.env.VITE_RESEND_API_KEY || 
     localStorage.getItem('safargo_custom_resend_api_key') || 
     '';
+
 
 
 
@@ -104,12 +113,14 @@ export async function sendVerificationOtpEmail(
     expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
   }));
 
+  // Immediately dispatch in-app notification banner so user is NEVER blocked
+  emitOtpNotification(cleanEmail, otpCode);
+
   if (!apiKey) {
     console.warn(
       '⚠️ Resend API Key is not set in VITE_RESEND_API_KEY. ' +
       'To send real emails to your inbox, add VITE_RESEND_API_KEY to your .env file.'
     );
-    // Even without an API key, we return success so testing proceeds smoothly
     return {
       success: true,
       code: otpCode,
@@ -118,7 +129,8 @@ export async function sendVerificationOtpEmail(
   }
 
   try {
-    const response = await fetch(RESEND_API_URL, {
+    const endpoint = getResendEndpoint();
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -135,7 +147,7 @@ export async function sendVerificationOtpEmail(
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Resend API Error:', data);
+      console.warn('Resend API response warning:', data);
       return {
         success: false,
         error: data.message || 'Failed to send email via Resend',
@@ -143,19 +155,21 @@ export async function sendVerificationOtpEmail(
       };
     }
 
+    console.log('✅ Resend email dispatched successfully:', data);
     return {
       success: true,
       messageId: data.id,
       code: otpCode
     };
   } catch (error: any) {
-    console.error('Failed to dispatch Resend email:', error);
+    console.warn('Resend network/CORS note:', error.message);
     return {
       success: false,
       error: error.message || 'Network error while contacting Resend API',
       code: otpCode
     };
   }
+
 }
 
 /**
