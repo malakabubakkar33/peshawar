@@ -104,6 +104,39 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   const [mapLayerStyle, setMapLayerStyle] = useState<'voyager' | 'streets' | 'satellite'>('voyager');
   const animationFrameRef = useRef<number | null>(null);
 
+  // Live User GPS coordinates tracking
+  const [userLiveCoords, setUserLiveCoords] = useState<[number, number]>(() => {
+    const lat = typeof window !== 'undefined' ? sessionStorage.getItem('safargo_user_lat') : null;
+    const lng = typeof window !== 'undefined' ? sessionStorage.getItem('safargo_user_lng') : null;
+    if (lat && lng) {
+      return [parseFloat(lat), parseFloat(lng)];
+    }
+    return [fromPlace.lat || 34.0151, fromPlace.lng || 71.5349];
+  });
+
+  // Automatically track real physical user location on map mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setUserLiveCoords([lat, lng]);
+          sessionStorage.setItem('safargo_user_lat', lat.toString());
+          sessionStorage.setItem('safargo_user_lng', lng.toString());
+
+          if (mapInstanceRef.current && screenState === 'home') {
+            mapInstanceRef.current.flyTo([lat, lng], 14, { duration: 1.4 });
+          }
+        },
+        (err) => {
+          console.warn('Map live GPS auto-track note:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      );
+    }
+  }, [screenState]);
+
   // Initialize Map Once
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -220,19 +253,21 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     markersRef.current.landmarks.forEach(m => m.remove());
     markersRef.current.landmarks = [];
 
-    // 1. Center User Location Indicator (Blue Dot + Translucent Green Halo Circle)
-    // Matches screenshot exactly
-    const userLocationCoord: [number, number] = [34.0151, 71.5349];
+    // 1. Center User Location Indicator (Blue Dot + Pulsing Dual Green Radar Rings)
+    const userLocationCoord: [number, number] = userLiveCoords;
     const centerUserIcon = L.divIcon({
       className: 'user-location-pulse-marker',
       html: `
-        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2" style="width: 64px; height: 64px;">
-          <div class="absolute inset-0 rounded-full bg-[#22c55e]/25 border border-[#22c55e]/40 animate-pulse"></div>
-          <div class="relative w-4 h-4 rounded-full bg-[#0284c7] border-2 border-white shadow-md"></div>
+        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2" style="width: 72px; height: 72px;">
+          <div class="absolute inset-0 rounded-full bg-[#16a34a]/25 border border-[#16a34a]/40 animate-ping"></div>
+          <div class="absolute inset-2 rounded-full bg-[#16a34a]/20 border border-[#16a34a]/50 animate-pulse"></div>
+          <div class="relative w-5 h-5 rounded-full bg-[#0284c7] border-2 border-white shadow-xl flex items-center justify-center">
+            <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+          </div>
         </div>
       `,
-      iconSize: [64, 64],
-      iconAnchor: [32, 32]
+      iconSize: [72, 72],
+      iconAnchor: [36, 36]
     });
     markersRef.current.centerUser = L.marker(userLocationCoord, { icon: centerUserIcon }).addTo(map);
 
@@ -241,17 +276,16 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       className: 'peshawar-city-label',
       html: `
         <div class="text-center select-none pointer-events-none -translate-x-1/2 -translate-y-full mb-3">
-          <span class="text-slate-800 font-extrabold text-sm tracking-wider drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]">Peshawar</span>
+          <span class="text-slate-800 font-extrabold text-sm tracking-wider drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]">Peshawar Live</span>
           <span class="text-slate-600 font-bold text-xs -mt-1 block font-urdu">پشاور</span>
         </div>
       `,
-      iconSize: [80, 40],
-      iconAnchor: [40, 20]
+      iconSize: [90, 40],
+      iconAnchor: [45, 20]
     });
-    markersRef.current.cityLabel = L.marker([34.0205, 71.5349], { icon: cityLabelIcon }).addTo(map);
+    markersRef.current.cityLabel = L.marker([userLocationCoord[0] + 0.003, userLocationCoord[1]], { icon: cityLabelIcon }).addTo(map);
 
-    // 3. Landmark Pins with exact icons matching reference image
-    // Islamia College, Peshawar Museum, Qissa Khwani Bazaar, Saddar
+    // 3. Authentic Peshawar Landmark Pins across the City
     const REFERENCE_LANDMARKS = [
       {
         name: 'Islamia College Peshawar',
@@ -261,25 +295,46 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         bg: 'bg-emerald-700'
       },
       {
+        name: 'Khyber Teaching Hospital (KTH)',
+        lat: 34.0092,
+        lng: 71.4925,
+        icon: '🏥',
+        bg: 'bg-rose-700'
+      },
+      {
+        name: 'Tatara Park Phase 3',
+        lat: 33.9921,
+        lng: 71.4389,
+        icon: '🌳',
+        bg: 'bg-emerald-600'
+      },
+      {
+        name: 'Mall Road Saddar Cantt',
+        lat: 34.0042,
+        lng: 71.5430,
+        icon: '🏬',
+        bg: 'bg-slate-800'
+      },
+      {
         name: 'Peshawar Museum',
         lat: 34.0135,
         lng: 71.5645,
         icon: '🏛️',
-        bg: 'bg-emerald-700'
+        bg: 'bg-purple-700'
       },
       {
-        name: 'Qissa Khwani Bazaar',
-        lat: 34.0108,
-        lng: 71.5714,
+        name: 'Karkhano Market Jamrud Rd',
+        lat: 33.9985,
+        lng: 71.4150,
         icon: '🛍️',
-        bg: 'bg-slate-700'
+        bg: 'bg-amber-700'
       },
       {
-        name: 'Saddar',
-        lat: 34.0042,
-        lng: 71.5430,
-        icon: '📍',
-        bg: 'bg-slate-700'
+        name: 'BRT Hayatabad Terminal',
+        lat: 33.9995,
+        lng: 71.4280,
+        icon: '🚌',
+        bg: 'bg-sky-700'
       }
     ];
 
@@ -528,7 +583,24 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   // Controls Handlers
   const handleLocateMe = () => {
     sound.playClick();
-    mapInstanceRef.current?.flyTo([34.0151, 71.5349], 14, { duration: 1 });
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setUserLiveCoords([lat, lng]);
+          sessionStorage.setItem('safargo_user_lat', lat.toString());
+          sessionStorage.setItem('safargo_user_lng', lng.toString());
+          mapInstanceRef.current?.flyTo([lat, lng], 15, { duration: 1.2 });
+        },
+        () => {
+          mapInstanceRef.current?.flyTo(userLiveCoords, 15, { duration: 1 });
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else {
+      mapInstanceRef.current?.flyTo(userLiveCoords, 15, { duration: 1 });
+    }
   };
 
   const handleZoomIn = () => {

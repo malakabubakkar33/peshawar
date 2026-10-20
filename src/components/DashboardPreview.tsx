@@ -10,7 +10,7 @@ import confetti from 'canvas-confetti';
 import { type UserAccount } from '../lib/supabase';
 import { 
   PESHAWAR_PLACES, calculateTripMetrics, type PeshawarPlace, 
-  type HistoryRide 
+  type HistoryRide, getNearestPeshawarPlace 
 } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
 import { PeshawarRealMap } from './PeshawarRealMap';
@@ -64,6 +64,28 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   const [isLocationGranted, setIsLocationGranted] = useState<boolean>(() => {
     return typeof window !== 'undefined' && !!sessionStorage.getItem('safargo_user_lat');
   });
+
+  // Automatic Real Location Tracking on Dashboard Mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          sessionStorage.setItem('safargo_user_lat', lat.toString());
+          sessionStorage.setItem('safargo_user_lng', lng.toString());
+          setIsLocationGranted(true);
+
+          const nearest = getNearestPeshawarPlace(lat, lng);
+          setFromPlace(nearest);
+        },
+        (err) => {
+          console.warn('GPS initial detection note:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   // Interactive Passenger Experience States (Chat, Calling, Custom Pins)
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -895,11 +917,11 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
 
 
       {/* ======================================================== */}
-      {/* 5. SLIDING SIDE NAVIGATION DRAWER                        */}
+      {/* 5. SLIDING SIDE NAVIGATION DRAWER (OPENS FROM RIGHT)    */}
       {/* ======================================================== */}
       <AnimatePresence>
         {isNavDrawerOpen && (
-          <div className="fixed inset-0 z-50 flex">
+          <div className="fixed inset-0 z-50 flex justify-end">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -909,11 +931,11 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
 
-            {/* Sliding Panel */}
+            {/* Sliding Panel from Right */}
             <motion.div
-              initial={{ x: '-100%' }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="relative w-80 max-w-[85vw] h-full bg-white shadow-2xl p-6 flex flex-col justify-between z-10"
             >
@@ -1076,8 +1098,12 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       {/* Mandatory Device Location (GPS) Permission Modal */}
       <LocationPermissionModal
         isOpen={!isLocationGranted}
-        onLocationGranted={(_coords) => {
+        onLocationGranted={(coords) => {
           setIsLocationGranted(true);
+          if (coords) {
+            const nearest = getNearestPeshawarPlace(coords.lat, coords.lng);
+            setFromPlace(nearest);
+          }
         }}
       />
     </div>
