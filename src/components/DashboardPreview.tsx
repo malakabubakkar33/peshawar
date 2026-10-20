@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Search, MapPin, 
   Phone, MessageCircle, Check, X, Clock, Wallet, 
   Bell, Shield, LogOut, ChevronRight, Navigation, ShieldCheck,
-  Car, Home, User as UserIcon, Settings, HelpCircle, 
+  User as UserIcon, Settings, HelpCircle, 
   AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -20,6 +20,7 @@ import { HistoryPage } from './HistoryPage';
 import { WalletPage } from './WalletPage';
 import { NotificationPage } from './NotificationPage';
 import { SearchPage } from './SearchPage';
+import { PassengerBottomNavigation, type PassengerNavTab } from './PassengerBottomNavigation';
 import { DriverChatModal, DriverCallModal } from './DriverChatModal';
 import { PersonalInfoPage } from './account/PersonalInfoPage';
 import { SecurityPrivacyPage } from './account/SecurityPrivacyPage';
@@ -346,6 +347,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
             onBack={() => setActivePage('home')}
             onUserUpdated={(updated) => setCurrentUser(updated)}
             onOpenAdminPanel={onOpenAdminPanel}
+            onSwitchToDriver={handleSwitchToDriver}
           />
         )}
 
@@ -973,98 +975,28 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       </main>
 
       {/* ======================================================== */}
-      {/* 3. EXACT REFERENCE WHITE BOTTOM NAVIGATION BAR          */}
+      {/* 3. PREMIUM FLOATING GLASSMORPHISM PASSENGER NAVBAR       */}
       {/* ======================================================== */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-100 shadow-[0_-6px_25px_rgba(0,0,0,0.06)] px-4 sm:px-8 py-2">
-        <div className="max-w-md mx-auto flex items-center justify-between relative">
-          
-          {/* 1. Home Tab */}
-          <button
-            onClick={() => {
-              setActivePage('home');
-              setCurrentScreen('home');
-              sound.playPop();
-            }}
-            className="flex flex-col items-center gap-1 py-1 w-16 transition-colors group active:scale-95"
-          >
-            <Home className={`w-6 h-6 transition-colors ${activePage === 'home' ? 'text-[#16a34a] fill-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`} />
-            <span className={`text-[11px] font-bold tracking-tight transition-colors ${activePage === 'home' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`}>
-              Home
-            </span>
-            {activePage === 'home' && (
-              <span className="w-6 h-1 rounded-full bg-[#16a34a] -mt-0.5"></span>
-            )}
-          </button>
-
-          {/* 2. History Tab */}
-          <button
-            onClick={() => {
-              setActivePage('history');
-              sound.playPop();
-            }}
-            className="flex flex-col items-center gap-1 py-1 w-16 transition-colors group active:scale-95"
-          >
-            <Clock className={`w-6 h-6 transition-colors ${activePage === 'history' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`} />
-            <span className={`text-[11px] font-bold tracking-tight transition-colors ${activePage === 'history' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`}>
-              History
-            </span>
-            {activePage === 'history' && (
-              <span className="w-6 h-1 rounded-full bg-[#16a34a] -mt-0.5"></span>
-            )}
-          </button>
-
-          {/* 3. Center Elevated Green Car Button */}
-          <div className="relative -top-5 flex flex-col items-center">
-            <button
-              onClick={() => {
-                sound.playSuccess();
-                setActivePage('home');
-                setCurrentScreen('categories');
-              }}
-              title="Book Peshawar Ride"
-              className="w-14 h-14 rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white shadow-xl shadow-[#16a34a]/35 border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-            >
-              <Car className="w-7 h-7 fill-white stroke-[2]" />
-            </button>
-          </div>
-
-          {/* 4. Wallet Tab */}
-          <button
-            onClick={() => {
-              setActivePage('wallet');
-              sound.playPop();
-            }}
-            className="flex flex-col items-center gap-1 py-1 w-16 transition-colors group active:scale-95"
-          >
-            <Wallet className={`w-6 h-6 transition-colors ${activePage === 'wallet' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`} />
-            <span className={`text-[11px] font-bold tracking-tight transition-colors ${activePage === 'wallet' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`}>
-              Wallet
-            </span>
-            {activePage === 'wallet' && (
-              <span className="w-6 h-1 rounded-full bg-[#16a34a] -mt-0.5"></span>
-            )}
-          </button>
-
-          {/* 5. Switch to Driver Mode */}
-          <button
-            onClick={() => {
-              handleSwitchToDriver();
-            }}
-            title="Switch to Driver Mode"
-            className="flex flex-col items-center gap-1 py-1 w-16 transition-colors group active:scale-95"
-          >
-            <div className="relative">
-              <Car className="w-6 h-6 text-slate-400 group-hover:text-[#16a34a] transition-colors" />
-              <span className="absolute -top-1 -right-2 px-1 py-0.2 rounded-full bg-emerald-100 text-[#16a34a] text-[8px] font-black border border-emerald-200">
-                DRV
-              </span>
-            </div>
-            <span className="text-[11px] font-bold tracking-tight text-slate-400 group-hover:text-[#16a34a] transition-colors">
-              Driver
-            </span>
-          </button>
-        </div>
-      </nav>
+      <PassengerBottomNavigation
+        activeTab={activePage}
+        onNavigate={(tab: PassengerNavTab) => {
+          if (tab === 'home') {
+            setActivePage('home');
+            setCurrentScreen('home');
+          } else if (tab === 'history') {
+            setActivePage('history');
+          } else if (tab === 'book') {
+            setActivePage('home');
+            if (currentScreen === 'home') {
+              setCurrentScreen('categories');
+            }
+          } else if (tab === 'wallet') {
+            setActivePage('wallet');
+          } else if (tab === 'profile') {
+            setActivePage('personal_info');
+          }
+        }}
+      />
 
 
 

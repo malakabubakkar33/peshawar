@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Camera, CheckCircle2, ShieldCheck, 
   User, Mail, Phone, MapPin, Calendar, Trash2, 
-  Save, AlertCircle, Sparkles
+  Save, AlertCircle, Sparkles, Car
 } from 'lucide-react';
 import { userStorage, type UserAccount } from '../../lib/supabase';
 import { sound } from '../../lib/sound';
@@ -15,13 +15,15 @@ interface PersonalInfoPageProps {
   onBack: () => void;
   onUserUpdated: (updatedUser: UserAccount) => void;
   onOpenAdminPanel?: () => void;
+  onSwitchToDriver?: () => void;
 }
 
 export const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({
   user,
   onBack,
   onUserUpdated,
-  onOpenAdminPanel
+  onOpenAdminPanel,
+  onSwitchToDriver
 }) => {
   const [fullName, setFullName] = useState(user.fullName || '');
   const [username, setUsername] = useState(user.username || '');
@@ -343,6 +345,26 @@ export const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({
             className="px-3.5 py-1.5 rounded-xl bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold transition-all active:scale-95 shadow-sm"
           >
             Open Admin
+          </button>
+        </div>
+      )}
+
+      {/* Switch to Driver Mode Card */}
+      {onSwitchToDriver && (
+        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-950 to-slate-900 text-white flex items-center justify-between shadow-md border border-emerald-500/25">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <Car className="w-3.5 h-3.5" />
+              SafarGo Driver Mode
+            </span>
+            <p className="text-xs text-slate-300">Earn in Peshawar with your bike or car</p>
+          </div>
+          <button
+            type="button"
+            onClick={onSwitchToDriver}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#16a34a] to-[#22c55e] text-white text-xs font-bold hover:brightness-105 transition-all active:scale-95 shadow-sm shrink-0"
+          >
+            Switch Mode
           </button>
         </div>
       )}
