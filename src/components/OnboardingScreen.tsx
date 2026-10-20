@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
-import { 
-  ArrowRight, MapPin, Zap, ShieldCheck, 
-  Sparkles, Package, Bike, Landmark, Compass, Check
-} from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { sound } from '../lib/sound';
 
 interface OnboardingScreenProps {
@@ -15,128 +12,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) 
 
   const slides = [
     {
-      id: 'peshawar-city',
-      title: 'Welcome to Peshawar',
-      subtitle: 'City of Flowers & Timeless Heritage',
-      description: 'Discover seamless, reliable urban mobility designed exclusively for Peshawar—from Saddar to Hayatabad and beyond.',
-      tag: 'Heritage & Mobility',
-      icon: Landmark,
-      centerGraphic: (
-        <div className="relative w-full h-56 sm:h-64 rounded-3xl bg-gradient-to-b from-[#eaf6e3] to-[#daf1d0] flex items-center justify-center overflow-hidden border border-lime-200/90 shadow-md">
-          {/* Bab-e-Khyber Skyline Silhouette */}
-          <div 
-            className="absolute inset-0 bg-contain bg-bottom bg-no-repeat opacity-40"
-            style={{ backgroundImage: `url('/peshawar-skyline-clean.png')` }}
-          />
-
-          {/* Floating animated pin */}
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
-            className="absolute top-6 w-11 h-11 rounded-full bg-[#3ebd19] text-white flex items-center justify-center shadow-lg shadow-[#3ebd19]/40 border-2 border-white z-20"
-          >
-            <MapPin className="w-6 h-6 fill-white" />
-          </motion.div>
-
-          {/* Central Monogram Badge */}
-          <div className="z-10 bg-white/95 backdrop-blur-sm p-4 rounded-3xl border border-lime-200 shadow-xl flex flex-col items-center">
-            <img 
-              src="/safar-go-monogram-exact.png" 
-              alt="SafarGo" 
-              className="w-16 h-16 object-contain" 
-            />
-            <span className="text-xs font-black text-slate-900 mt-2 tracking-tight">
-              Safar<span className="text-[#3ebd19]">Go</span> Peshawar
-            </span>
-          </div>
-        </div>
-      ),
-      features: [
-        { label: 'Local Routes', sub: 'Every Corner', icon: Compass },
-        { label: 'Fair Fares', sub: 'Honest Pricing', icon: Zap },
-        { label: 'Safe & Verified', sub: 'Peshawar Drivers', icon: ShieldCheck }
-      ]
+      id: 'drive-your-way',
+      title: 'Drive Your Way',
+      subtitle: 'Earn More • Explore More',
+      description: 'Peshawar’s premier smart mobility network. Ride as a passenger or register your bike / car to earn flexible daily income.'
     },
     {
-      id: 'bike-ride',
-      title: 'Quick & Affordable Bike Rides',
-      subtitle: 'Beat the Peshawar Traffic',
-      description: 'Hop on a bike ride for the fastest, most economical travel through busy bazaars, BRT routes, and city corridors.',
-      tag: 'Swift Bike Service',
-      icon: Bike,
-      centerGraphic: (
-        <div className="relative w-full h-56 sm:h-64 rounded-3xl bg-gradient-to-b from-[#eaf6e3] to-[#daf1d0] flex items-center justify-center overflow-hidden border border-lime-200/90 shadow-md">
-          {/* Subtle Skyline */}
-          <div 
-            className="absolute inset-0 bg-contain bg-bottom bg-no-repeat opacity-30"
-            style={{ backgroundImage: `url('/peshawar-skyline.png')` }}
-          />
-
-          {/* Floating Map Pin */}
-          <motion.div 
-            animate={{ y: [0, -6, 0] }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-            className="absolute top-5 w-9 h-9 rounded-full bg-[#3ebd19] text-white flex items-center justify-center shadow-lg shadow-[#3ebd19]/40 border-2 border-white z-10"
-          >
-            <MapPin className="w-5 h-5 fill-white" />
-          </motion.div>
-
-          {/* Bike & Rider Asset */}
-          <motion.img 
-            src="/vehicle-bike.png" 
-            alt="Peshawar Bike Ride" 
-            className="w-48 sm:w-56 object-contain z-10 drop-shadow-xl mt-4"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4 }}
-          />
-
-          <div className="absolute -bottom-6 inset-x-0 h-14 bg-white/70 rounded-[100%] blur-[1px]" />
-        </div>
-      ),
-      features: [
-        { label: 'Lowest Fares', sub: 'Starting Rs 50', icon: Zap },
-        { label: 'Helmet Safety', sub: 'Rider & Passenger', icon: ShieldCheck },
-        { label: 'Instant Pickup', sub: 'Under 3 Minutes', icon: Sparkles }
-      ]
+      id: 'instant-rides',
+      title: 'Instant City Rides',
+      subtitle: 'Quick Bikes & Comfort Cars',
+      description: 'Beat the traffic from Saddar Cantt to Hayatabad, University Town & Ring Road with honest, upfront pricing.'
     },
     {
-      id: 'multi-service',
-      title: 'Smart City Multi-Services',
-      subtitle: 'Rides, Courier & Parcel Deliveries',
-      description: 'More than just rides. Send parcels across Peshawar or book comfort cars for your family with a single tap.',
-      tag: 'All-in-One Mobility',
-      icon: Package,
-      centerGraphic: (
-        <div className="relative w-full h-56 sm:h-64 rounded-3xl bg-gradient-to-b from-[#eaf6e3] to-[#daf1d0] flex items-center justify-center overflow-hidden border border-lime-200/90 shadow-md">
-          {/* Modern white sedan and parcel box */}
-          <motion.img 
-            src="/vehicle-car.png" 
-            alt="Peshawar Car & Cargo" 
-            className="w-52 sm:w-60 object-contain z-10 drop-shadow-xl -mt-2"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4 }}
-          />
-
-          {/* Floating Delivery Box Badge */}
-          <motion.div 
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
-            className="absolute top-5 right-8 px-3 py-1 rounded-full bg-white text-slate-800 text-[11px] font-bold shadow-md border border-lime-200 flex items-center gap-1.5 z-20"
-          >
-            <Package className="w-3.5 h-3.5 text-[#3ebd19]" />
-            <span>Fast Parcel Delivery</span>
-          </motion.div>
-
-          <div className="absolute -bottom-6 inset-x-0 h-14 bg-white/70 rounded-[100%] blur-[1px]" />
-        </div>
-      ),
-      features: [
-        { label: 'Door Delivery', sub: 'Across Peshawar', icon: Package },
-        { label: 'AC & Economy', sub: 'Clean Vehicles', icon: Sparkles },
-        { label: 'Live Tracking', sub: 'GPS Navigation', icon: MapPin }
-      ]
+      id: 'smart-courier',
+      title: 'Safe & Tracked Travel',
+      subtitle: 'Verified Local Peshawar Drivers',
+      description: 'Real-time GPS navigation, emergency helplines, and 24/7 dedicated Peshawar customer assistance.'
     }
   ];
 
@@ -150,153 +41,160 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) 
     }
   };
 
-  // Mobile Swipe Gesture Handlers
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    const swipeThreshold = 50;
-    if (info.offset.x < -swipeThreshold && currentStep < 2) {
-      // Swiped Left -> Next
-      sound.playClick();
-      setCurrentStep(prev => (prev + 1) as 0 | 1 | 2);
-    } else if (info.offset.x > swipeThreshold && currentStep > 0) {
-      // Swiped Right -> Previous
-      sound.playClick();
-      setCurrentStep(prev => (prev - 1) as 0 | 1 | 2);
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.x < -45 && currentStep < 2) {
+      sound.playPop();
+      setCurrentStep((prev) => (prev + 1) as 0 | 1 | 2);
+    } else if (info.offset.x > 45 && currentStep > 0) {
+      sound.playPop();
+      setCurrentStep((prev) => (prev - 1) as 0 | 1 | 2);
     }
   };
 
-  const activeSlide = slides[currentStep];
-
   return (
-    <div className="relative w-full min-h-screen bg-[#fafdf8] flex flex-col justify-between px-5 sm:px-8 py-6 select-none overflow-hidden font-sans selection:bg-[#3ebd19]/20">
+    <div className="fixed inset-0 w-full h-full bg-[#f3f9ee] flex flex-col justify-between items-center overflow-hidden select-none z-40 font-sans">
       
-      {/* Background Corner Wave Graphics matching SafarGo Theme */}
-      <div className="fixed top-0 left-0 w-[170px] sm:w-[220px] h-[170px] sm:h-[220px] pointer-events-none z-0 select-none opacity-80">
-        <svg viewBox="0 0 360 360" fill="none" className="w-full h-full">
-          <path d="M0 0 L0 320 C90 310 180 260 250 180 C310 110 340 50 350 0 Z" fill="#6fd622" fillOpacity="0.25" />
-          <path d="M0 0 L0 250 C70 240 140 200 190 140 C240 80 270 30 280 0 Z" fill="#48bb13" fillOpacity="0.35" />
+      {/* 1. TOP BACKGROUND WAVY CONTOURS (Exact Match to Reference Image) */}
+      <div className="absolute top-0 inset-x-0 h-72 pointer-events-none z-0 overflow-hidden">
+        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-60">
+          <path 
+            d="M -20 60 C 80 30, 200 90, 420 30 L 420 0 L -20 0 Z" 
+            fill="#e2f4d8" 
+          />
+          <path 
+            d="M -20 120 C 120 70, 240 140, 420 80 L 420 0 L -20 0 Z" 
+            fill="#ebf7e4" 
+            opacity="0.8"
+          />
+          <path 
+            d="M -20 180 C 100 130, 260 190, 420 140 L 420 0 L -20 0 Z" 
+            fill="#f5faef" 
+            opacity="0.9"
+          />
         </svg>
       </div>
 
-      {/* Top Header with SafarGo Monogram Logo */}
-      <div className="relative z-10 w-full flex items-center justify-center pt-2">
-        <div className="flex items-center gap-2 select-none px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200/80 shadow-2xs">
-          <img 
-            src="/safar-go-monogram-exact.png" 
-            alt="SafarGo" 
-            className="w-6 h-6 object-contain" 
-          />
-          <span className="text-base font-black text-slate-900 tracking-tight">
-            Safar<span className="text-[#3ebd19]">Go</span>
-          </span>
+      {/* 2. TOP BRANDING HEADER & SKIP BUTTON */}
+      <div className="relative z-20 w-full max-w-md pt-7 sm:pt-9 px-5 flex items-center justify-between">
+        <div className="w-12" /> {/* Left spacer for balance */}
+
+        {/* Center Logo & Wordmark */}
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center filter drop-shadow-sm">
+            <img 
+              src="/safar-go-monogram-exact.png" 
+              alt="SafarGo" 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/safar-go-monogram-clean.png';
+              }}
+            />
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center justify-center -mt-1">
+            <span className="text-[#0f172a]">Safar</span>
+            <span className="text-[#16a34a] ml-0.5">Go</span>
+          </h1>
+
+          <p className="text-[11px] font-bold text-slate-500 tracking-[0.22em] uppercase mt-0.5">
+            Ride &nbsp;&bull;&nbsp; Explore &nbsp;&bull;&nbsp; Peshawar
+          </p>
+        </div>
+
+        {/* Right Skip Button */}
+        <div className="w-12 flex justify-end">
+          <button
+            onClick={() => {
+              sound.playClick();
+              onFinish();
+            }}
+            className="px-3 py-1 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-slate-900 border border-emerald-200/90 text-xs font-bold shadow-2xs active:scale-95 transition-all"
+          >
+            Skip
+          </button>
         </div>
       </div>
 
-      {/* Main Touch Swipeable Carousel Container */}
+      {/* 3. CENTER HERO SCENE: Iconic Bab-e-Khyber Peshawar Valley */}
       <motion.div 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
-        className="relative z-10 flex-1 flex flex-col justify-center items-center max-w-sm mx-auto w-full py-4 cursor-grab active:cursor-grabbing"
+        className="relative z-10 w-full flex-1 flex items-center justify-center max-w-md px-3 -my-3 cursor-grab active:cursor-grabbing overflow-hidden"
       >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeSlide.id}
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="w-full flex flex-col items-center text-center"
-          >
-            {/* Tag Badge */}
-            <div className="mb-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e8f8dc] text-[#2c980b] text-[11px] font-bold uppercase tracking-wider border border-lime-200">
-                <activeSlide.icon className="w-3.5 h-3.5" />
-                <span>{activeSlide.tag}</span>
-              </span>
-            </div>
-
-            {/* Heading */}
-            <h2 className="text-2xl sm:text-[26px] font-black text-slate-900 leading-tight mb-1 tracking-tight">
-              {activeSlide.title}
-            </h2>
-            <p className="text-xs sm:text-sm text-[#3ebd19] font-bold mb-2">
-              {activeSlide.subtitle}
-            </p>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-xs mb-5">
-              {activeSlide.description}
-            </p>
-
-            {/* Center Graphic */}
-            <div className="w-full mb-5">
-              {activeSlide.centerGraphic}
-            </div>
-
-            {/* 3 Feature Badges */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 w-full">
-              {activeSlide.features.map((feat, idx) => (
-                <div 
-                  key={idx}
-                  className="p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center"
-                >
-                  <div className="w-8 h-8 rounded-full bg-lime-50 text-[#3ebd19] flex items-center justify-center mb-1">
-                    <feat.icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-bold text-slate-800 leading-tight">{feat.label}</span>
-                  <span className="text-[9px] text-slate-400 font-medium">{feat.sub}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        <div className="relative w-full h-full max-h-[380px] flex items-center justify-center">
+          <img 
+            src="/peshawar-gate-scenic.jpg" 
+            alt="Peshawar Scenic Gate" 
+            className="w-full h-full object-cover object-center rounded-3xl shadow-xl filter saturate-[1.08] contrast-[1.03]"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/safar-go-peshawar-splash.png';
+            }}
+          />
+          <div className="absolute inset-0 rounded-3xl ring-1 ring-black/5 pointer-events-none" />
+        </div>
       </motion.div>
 
-      {/* Footer Controls: Pagination Dots + Stylish Next Arrow Button */}
-      <div className="relative z-10 w-full max-w-sm mx-auto flex flex-col items-center gap-4 pb-2">
+      {/* 4. BOTTOM CONVEX CURVED DOME & INTERACTIVE SLIDES */}
+      <div className="relative z-20 w-full max-w-md pt-5 pb-8 px-6 bg-white/95 backdrop-blur-md rounded-t-[44px] sm:rounded-t-[52px] shadow-[0_-12px_40px_rgba(0,0,0,0.06)] border-t border-emerald-100 flex flex-col items-center text-center">
         
-        {/* Pagination Dots */}
-        <div className="flex items-center gap-2">
+        {/* Animated Slide Content */}
+        <div className="w-full min-h-[92px] flex flex-col items-center justify-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="flex flex-col items-center"
+            >
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                {slides[currentStep].title}
+              </h2>
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                {slides[currentStep].subtitle}
+              </p>
+              <p className="text-[11px] text-slate-400 max-w-xs mt-1.5 leading-relaxed line-clamp-2">
+                {slides[currentStep].description}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* 3-Segment Capsule Progress Pill (Exact Match to User's Screenshot) */}
+        <div className="flex items-center gap-1.5 my-4">
           {slides.map((_, idx) => (
             <button
               key={idx}
-              type="button"
-              onClick={() => { sound.playClick(); setCurrentStep(idx as 0 | 1 | 2); }}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+              onClick={() => {
+                sound.playPop();
+                setCurrentStep(idx as 0 | 1 | 2);
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
                 currentStep === idx 
-                  ? 'w-7 bg-[#3ebd19]' 
-                  : 'w-2 bg-slate-300 hover:bg-slate-400'
+                  ? 'w-10 bg-[#16a34a] shadow-sm' 
+                  : 'w-6 bg-emerald-100 hover:bg-emerald-200'
               }`}
+              aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
         </div>
 
-        {/* Stylish Circular / Rounded Arrow Button with Micro-Animation */}
-        <div className="w-full flex items-center justify-center pt-1">
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleNext}
-            className="group relative flex items-center justify-center gap-2.5 py-3.5 px-8 rounded-full bg-gradient-to-r from-[#44b718] via-[#3ebd19] to-[#2ca012] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#3ebd19]/35 hover:brightness-105 active:scale-[0.98] transition duration-200 cursor-pointer overflow-hidden"
-          >
-            {/* Glowing shimmer ring */}
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-            <span>{currentStep === 2 ? 'Get Started' : 'Next'}</span>
-
-            {/* Sleek Arrow Icon Container */}
-            <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center transition-transform group-hover:translate-x-1">
-              {currentStep === 2 ? (
-                <Check className="w-4 h-4 stroke-[3]" />
-              ) : (
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              )}
-            </div>
-          </motion.button>
-        </div>
-
+        {/* Action Button */}
+        <button
+          onClick={handleNext}
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#16a34a] to-[#22c55e] text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/25 hover:brightness-105 active:scale-98 transition-all flex items-center justify-center gap-2"
+        >
+          <span>{currentStep === 2 ? 'Get Started' : 'Continue'}</span>
+          {currentStep === 2 ? (
+            <ArrowRight className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </button>
       </div>
-
     </div>
   );
 };

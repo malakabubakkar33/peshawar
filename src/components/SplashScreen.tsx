@@ -42,129 +42,113 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5, ease: 'easeInOut' }}
       onClick={onComplete}
-      className="fixed inset-0 w-full h-full bg-[#fafdf8] flex flex-col justify-between items-center px-4 py-8 sm:py-10 overflow-hidden select-none cursor-pointer z-50 selection:bg-[#3ebd19]/20"
+      className="fixed inset-0 w-full h-full bg-[#f3f9ee] flex flex-col justify-between items-center overflow-hidden select-none cursor-pointer z-50 selection:bg-[#3ebd19]/20 font-sans"
     >
-      {/* ===== BACKGROUND DECORATIVE GRAPHICS (Exact Match with Login Page) ===== */}
-      
-      {/* Top-Left Organic Curved Wave */}
-      <div className="absolute top-0 left-0 w-[180px] sm:w-[240px] h-[180px] sm:h-[240px] pointer-events-none z-0 select-none opacity-85">
-        <svg viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <defs>
-            <linearGradient id="splashWaveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#48bb13" stopOpacity="0.85" />
-              <stop offset="60%" stopColor="#6fd622" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#9be738" stopOpacity="0.2" />
-            </linearGradient>
-            <linearGradient id="splashWaveGrad2" x1="0%" y1="0%" x2="80%" y2="80%">
-              <stop offset="0%" stopColor="#55c218" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#82de29" stopOpacity="0.15" />
-            </linearGradient>
-            <linearGradient id="splashWaveGrad3" x1="0%" y1="0%" x2="70%" y2="70%">
-              <stop offset="0%" stopColor="#3ca80d" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#59c719" stopOpacity="0.1" />
-            </linearGradient>
-          </defs>
-          <path d="M0 0 L0 320 C90 310 180 260 250 180 C310 110 340 50 350 0 Z" fill="url(#splashWaveGrad1)" />
-          <path d="M0 0 L0 250 C70 240 140 200 190 140 C240 80 270 30 280 0 Z" fill="url(#splashWaveGrad2)" />
-          <path d="M0 0 L0 180 C50 170 100 140 140 95 C180 50 200 20 210 0 Z" fill="url(#splashWaveGrad3)" />
-        </svg>
-      </div>
-
-      {/* Top-Right Dotted Travel Trajectory with Map Pins */}
-      <div className="absolute top-4 right-4 sm:top-8 sm:right-8 w-44 sm:w-60 h-44 sm:h-60 pointer-events-none z-0 select-none opacity-85">
-        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* 1. TOP BACKGROUND WAVY CONTOURS (Exact Match to Reference Image) */}
+      <div className="absolute top-0 inset-x-0 h-72 pointer-events-none z-0 overflow-hidden">
+        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-60">
           <path 
-            d="M 180 25 C 130 35 150 90 95 110 C 65 120 75 160 50 175" 
-            stroke="#94d82d" 
-            strokeWidth="2.5" 
-            strokeDasharray="5 6" 
-            strokeLinecap="round"
-            fill="none" 
+            d="M -20 60 C 80 30, 200 90, 420 30 L 420 0 L -20 0 Z" 
+            fill="#e2f4d8" 
           />
-          <g transform="translate(150, 18) scale(0.9)">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#b8e986" />
-            <circle cx="12" cy="9" r="2.5" fill="#ffffff" />
-          </g>
-          <g transform="translate(85, 95) scale(0.95)">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#a4e262" />
-            <circle cx="12" cy="9" r="2.5" fill="#ffffff" />
-          </g>
+          <path 
+            d="M -20 120 C 120 70, 240 140, 420 80 L 420 0 L -20 0 Z" 
+            fill="#ebf7e4" 
+            opacity="0.8"
+          />
+          <path 
+            d="M -20 180 C 100 130, 260 190, 420 140 L 420 0 L -20 0 Z" 
+            fill="#f5faef" 
+            opacity="0.9"
+          />
         </svg>
       </div>
 
-      {/* Spacer */}
-      <div className="w-full h-6" />
-
-      {/* CENTER: SafarGo Monogram Emblem & Smooth Animated Typography */}
-      <div className="relative z-10 flex flex-col items-center justify-center -mt-4">
-        {/* Animated Monogram Logo */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: -16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="relative mb-4 flex items-center justify-center"
-        >
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/95 backdrop-blur-md shadow-xl shadow-lime-500/15 border border-lime-200/90 flex items-center justify-center p-3.5">
+      {/* 2. TOP BRANDING HEADER: Monogram Logo & Wordmark */}
+      <motion.div 
+        initial={{ opacity: 0, y: -14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 flex flex-col items-center pt-8 sm:pt-10 px-4"
+      >
+        {/* Monogram Logo: Interlocking Green & Navy Curves with Location Pin */}
+        <div className="relative mb-2.5 flex items-center justify-center">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center filter drop-shadow-md">
             <img 
               src="/safar-go-monogram-exact.png" 
               alt="SafarGo" 
-              className="w-full h-full object-contain filter drop-shadow-sm"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Fallback to monogram clean
+                (e.target as HTMLImageElement).src = '/safar-go-monogram-clean.png';
+              }}
             />
           </div>
-          {/* Subtle Ambient Glow */}
-          <div className="absolute inset-0 rounded-3xl bg-lime-400/20 blur-xl pointer-events-none animate-pulse-slow" />
-        </motion.div>
+        </div>
 
-        {/* Animated Title & Branding */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
-          className="text-center"
-        >
-          <h1 className="text-3xl sm:text-4xl font-black text-[#1e293b] tracking-tight">
-            Safar<span className="text-[#3ebd19]">Go</span>
-          </h1>
+        {/* Wordmark: SafarGo */}
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center justify-center">
+          <span className="text-[#0f172a]">Safar</span>
+          <span className="text-[#16a34a] ml-0.5">Go</span>
+        </h1>
 
-          <p className="text-xs sm:text-sm font-bold text-slate-500 tracking-[0.25em] uppercase mt-1">
-            Ride &bull; Explore &bull; Peshawar
-          </p>
+        {/* Subtitle */}
+        <p className="text-xs sm:text-[13px] font-bold text-slate-500 tracking-[0.24em] uppercase mt-1">
+          Ride &nbsp;&bull;&nbsp; Explore &nbsp;&bull;&nbsp; Peshawar
+        </p>
+      </motion.div>
 
-          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-100/80 border border-lime-200 text-[#2c980b] text-xs font-bold shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-[#3ebd19] animate-ping" />
-            <span>Peshawar Smart Mobility</span>
-          </div>
-        </motion.div>
-      </div>
+      {/* 3. CENTER HERO SCENE: Iconic Bab-e-Khyber & Peshawar Valley */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, delay: 0.15, ease: 'easeOut' }}
+        className="relative z-0 w-full flex-1 flex items-center justify-center max-w-md px-2 -my-4 overflow-hidden"
+      >
+        <div className="relative w-full h-full max-h-[420px] flex items-center justify-center">
+          <img 
+            src="/peshawar-gate-scenic.jpg" 
+            alt="Peshawar Khyber Gate Heritage" 
+            className="w-full h-full object-cover object-center rounded-3xl shadow-xl filter saturate-[1.08] contrast-[1.03]"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/safar-go-peshawar-splash.png';
+            }}
+          />
+          {/* Subtle natural vignette & ambient glow */}
+          <div className="absolute inset-0 rounded-3xl ring-1 ring-black/5 pointer-events-none" />
+        </div>
+      </motion.div>
 
-      {/* BOTTOM SECTION: Peshawar Heritage Skyline & Silky Smooth Progress Line */}
-      <div className="relative z-10 w-full max-w-sm flex flex-col items-center pb-4">
-        {/* Silky Smooth Progress Bar */}
-        <div className="w-48 sm:w-56 h-2 bg-slate-200/80 rounded-full overflow-hidden p-0.5 shadow-inner mb-3">
+      {/* 4. BOTTOM CONVEX CURVED DOME & SMOOTH PROGRESS BAR */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.25, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md pt-6 pb-8 px-6 bg-white/95 backdrop-blur-md rounded-t-[44px] sm:rounded-t-[52px] shadow-[0_-12px_40px_rgba(0,0,0,0.06)] border-t border-emerald-100 flex flex-col items-center text-center"
+      >
+        {/* Title */}
+        <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+          Drive Your Way
+        </h2>
+
+        {/* Subtitle */}
+        <p className="text-xs font-semibold text-slate-500 mt-0.5 mb-4">
+          Earn More &bull; Explore More
+        </p>
+
+        {/* Silky Smooth Progress Pill (Exact Match to User's Screenshot) */}
+        <div className="w-28 sm:w-36 h-2 bg-emerald-100/90 rounded-full overflow-hidden p-0.5 shadow-inner">
           <div 
-            className="h-full bg-gradient-to-r from-[#44b718] via-[#3ebd19] to-[#65a30d] rounded-full shadow-sm transition-[width] duration-75 ease-linear"
+            className="h-full bg-gradient-to-r from-[#16a34a] to-[#22c55e] rounded-full shadow-sm transition-[width] duration-75 ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <p className="text-[11px] text-slate-400 font-bold tracking-wider uppercase mb-5">
-          {progress < 100 ? 'Starting SafarGo...' : 'Welcome to Peshawar'}
-        </p>
-
-        {/* Unified Peshawar Landmark Skyline (Matching Login Page Grounded Silhouette) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.1, ease: 'easeOut' }}
-          className="w-full flex justify-center"
-        >
-          <img 
-            src="/peshawar-skyline-clean.png" 
-            alt="Peshawar Skyline" 
-            className="w-full max-w-[360px] h-auto object-contain pointer-events-none drop-shadow-sm opacity-95" 
-          />
-        </motion.div>
-      </div>
+        {/* Skip hint */}
+        <span className="text-[10px] text-slate-400 font-medium mt-3 tracking-wide">
+          Tap anywhere to continue
+        </span>
+      </motion.div>
     </motion.div>
   );
 };
