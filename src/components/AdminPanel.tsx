@@ -1109,19 +1109,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* Photos Gallery */}
+              {/* Photos Gallery including EasyPaisa Payment Receipt */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
                   { label: 'CNIC Front Side', url: selectedDocApp.documents?.cnicFront },
                   { label: 'CNIC Back Side', url: selectedDocApp.documents?.cnicBack || selectedDocApp.documents?.cnicFront },
                   { label: 'Driving License', url: selectedDocApp.documents?.license },
-                  { label: 'Vehicle Number Plate', url: selectedDocApp.documents?.plate }
+                  { label: 'Vehicle Number Plate', url: selectedDocApp.documents?.plate },
+                  { label: 'EasyPaisa Payment Screenshot (Fee Receipt)', url: selectedDocApp.documents?.paymentScreenshot }
                 ].map((doc, idx) => (
-                  <div key={idx} className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-300 block">{doc.label}</span>
-                    <div className="h-40 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
+                  <div key={idx} className={`p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 ${doc.label.includes('Payment') ? 'sm:col-span-2 border-emerald-500/40 bg-emerald-950/20' : ''}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-300 block">{doc.label}</span>
+                      {doc.label.includes('Payment') && (
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          EasyPaisa &bull; 03328888249
+                        </span>
+                      )}
+                    </div>
+                    <div className="h-44 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
                       {doc.url ? (
-                        <img src={doc.url} alt={doc.label} className="w-full h-full object-cover hover:scale-105 transition" />
+                        <img src={doc.url} alt={doc.label} className="w-full h-full object-contain hover:scale-105 transition" />
                       ) : (
                         <span className="text-slate-600 text-xs">No document photo uploaded</span>
                       )}

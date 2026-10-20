@@ -25,6 +25,7 @@ export interface DriverApplication {
     license?: string | null;
     plate?: string | null;
     selfie?: string | null;
+    paymentScreenshot?: string | null;
   };
 }
 
@@ -293,6 +294,27 @@ export const adminManager = {
           userStorage.updateRole(found.id, 'driver');
         }
       }
+
+      // Record Push Notification for Driver
+      const notifKey = `safargo_user_notifications_${target.userId || target.phone}`;
+      try {
+        const currentNotifs = JSON.parse(localStorage.getItem(notifKey) || '[]');
+        currentNotifs.unshift({
+          id: `NOTIF-APP-${Date.now()}`,
+          title: '🎉 Driver Application Approved!',
+          description: `Assalam-o-Alaikum ${target.fullName}, your SafarGo Driver Application has been officially reviewed and approved by the Peshawar Admin team. You can now accept rides!`,
+          time: 'Just now',
+          type: 'driver_approved',
+          read: false
+        });
+        localStorage.setItem(notifKey, JSON.stringify(currentNotifs));
+      } catch (err) {
+        console.error('Failed to save notification:', err);
+      }
+
+      // Dispatch real push event to notify driver app instance
+      window.dispatchEvent(new CustomEvent('safargo-driver-approved', { detail: target }));
+
       return target;
     }
     return null;

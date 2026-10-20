@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Shield, Star, 
   Clock, Wallet, Bell, LogOut, 
-  Phone, ChevronRight, CheckCircle2, Car, ShieldCheck
+  Phone, ChevronRight, CheckCircle2, Car, ShieldCheck, Camera
 } from 'lucide-react';
 import { userStorage, type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
+import { ImageCropperModal } from './ImageCropperModal';
 
 interface ProfilePageProps {
   user: UserAccount;
@@ -29,10 +30,52 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenAdminPanel,
   onLogout
 }) => {
-  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [currentUserAvatar, setCurrentUserAvatar] = useState(user.avatarUrl);
+  const [rawImageForCrop, setRawImageForCrop] = useState<string | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPG, PNG, WebP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setRawImageForCrop(dataUrl);
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (croppedDataUrl: string) => {
+    setCurrentUserAvatar(croppedDataUrl);
+    sound.playSuccess();
+    const updated = userStorage.updateUser(user.id, { avatarUrl: croppedDataUrl });
+    if (updated) {
+      userStorage.setSession(updated);
+    }
+  };
+
   return (
     <div className="w-full min-h-screen bg-slate-50 pt-20 pb-28 px-4 sm:px-6 max-w-3xl mx-auto font-sans">
       
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAvatarFileChange}
+      />
+
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -60,10 +103,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-100 border-2 border-lime-500 shadow-md">
               <img
-                src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                src={currentUserAvatar || user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                 alt={user.fullName}
                 className="w-full h-full object-cover"
               />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 bg-slate-950/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
+                title="Change Photo"
+              >
+                <Camera className="w-5 h-5 text-lime-300" />
+              </button>
               <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
 
@@ -301,6 +352,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Profile Photo Cropper Modal */}
+      <ImageCropperModal
+        isOpen={isCropModalOpen}
+        imageSrc={rawImageForCrop}
+        onClose={() => setIsCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 };

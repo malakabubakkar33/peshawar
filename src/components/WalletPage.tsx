@@ -2,17 +2,34 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Plus, ArrowUpRight, ArrowDownLeft, 
-  ShieldCheck, Tag, CheckCircle2 
+  ShieldCheck, Tag, CheckCircle2, Wallet, CreditCard
 } from 'lucide-react';
-import { SAMPLE_WALLET_TRANSACTIONS, type WalletTransaction } from '../lib/peshawarData';
+import { type WalletTransaction } from '../lib/peshawarData';
 
 interface WalletPageProps {
   onBackToHome: () => void;
 }
 
 export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
-  const [balance, setBalance] = useState<number>(1450.00);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>(SAMPLE_WALLET_TRANSACTIONS);
+  // Start with clean fresh state
+  const [balance, setBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('safargo_wallet_balance');
+      return saved ? parseFloat(saved) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [transactions, setTransactions] = useState<WalletTransaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('safargo_wallet_transactions');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [topUpAmount, setTopUpAmount] = useState<string>('500');
   const [selectedMethod, setSelectedMethod] = useState<'easypaisa' | 'jazzcash' | 'sadapay' | 'card'>('easypaisa');
   const [promoCode, setPromoCode] = useState<string>('');
@@ -23,8 +40,12 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
     const amt = parseFloat(topUpAmount);
     if (isNaN(amt) || amt <= 0) return;
     setIsAddingFunds(true);
+
     setTimeout(() => {
-      setBalance(prev => prev + amt);
+      const newBal = balance + amt;
+      setBalance(newBal);
+      localStorage.setItem('safargo_wallet_balance', newBal.toString());
+
       const newTx: WalletTransaction = {
         id: `TX-${Math.floor(1000 + Math.random() * 9000)}`,
         title: `${selectedMethod.toUpperCase()} Top Up`,
@@ -34,7 +55,11 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
         date: 'Just now',
         method: selectedMethod
       };
-      setTransactions([newTx, ...transactions]);
+
+      const updatedTxs = [newTx, ...transactions];
+      setTransactions(updatedTxs);
+      localStorage.setItem('safargo_wallet_transactions', JSON.stringify(updatedTxs));
+
       setIsAddingFunds(false);
       alert(`🎉 Successfully added PKR ${amt} to your SafarGo Wallet via ${selectedMethod.toUpperCase()}!`);
     }, 1000);
@@ -44,7 +69,24 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
     if (!promoCode.trim()) return;
     if (promoCode.toUpperCase() === 'PESHAWAR20' || promoCode.toUpperCase() === 'SAFARGO') {
       setPromoApplied(true);
-      setBalance(prev => prev + 200);
+      const newBal = balance + 200;
+      setBalance(newBal);
+      localStorage.setItem('safargo_wallet_balance', newBal.toString());
+
+      const bonusTx: WalletTransaction = {
+        id: `TX-PROMO-${Math.floor(1000 + Math.random() * 9000)}`,
+        title: 'Promo Welcome Bonus',
+        subtitle: 'PESHAWAR20 applied',
+        amount: 200,
+        type: 'credit',
+        date: 'Just now',
+        method: 'promo'
+      };
+
+      const updatedTxs = [bonusTx, ...transactions];
+      setTransactions(updatedTxs);
+      localStorage.setItem('safargo_wallet_transactions', JSON.stringify(updatedTxs));
+
       alert('🎉 Promo Code Applied! PKR 200 bonus added to your wallet!');
       setPromoCode('');
     } else {
@@ -81,7 +123,6 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
             animate={{ scale: 1, opacity: 1 }}
             className="w-full rounded-3xl p-6 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white shadow-2xl relative overflow-hidden border border-emerald-500/20"
           >
-            {/* Background glowing orbs */}
             <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-lime-500/20 blur-3xl" />
             <div className="absolute -left-8 -bottom-8 w-40 h-40 rounded-full bg-emerald-500/20 blur-3xl" />
 
@@ -98,41 +139,37 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
               <div className="mb-6">
                 <span className="text-[11px] text-slate-400 font-medium block">Total Balance</span>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-lime-400 font-bold">PKR</span>
-                  <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                    {balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-sm font-bold text-lime-400">PKR</span>
+                  <span className="text-4xl font-extrabold tracking-tight">
+                    {balance.toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/10 text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Account Holder</span>
-                  <span className="font-bold text-slate-200">Muhammad Abubakar</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-lime-400 text-xs font-bold">
-                  <ShieldCheck className="w-4 h-4" /> Verified
-                </div>
+              <div className="flex items-center justify-between pt-4 border-t border-white/10 text-xs text-slate-400">
+                <span>Instant Auto-Pay</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Active
+                </span>
               </div>
             </div>
           </motion.div>
 
-          {/* Quick Top-Up Box */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Plus className="w-4 h-4 text-lime-600" /> Quick Add Funds
-            </h3>
+          {/* Quick Top-Up Container */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-extrabold text-slate-900">Load Wallet Balance</h3>
 
-            {/* Quick Amount Pills */}
-            <div className="grid grid-cols-4 gap-2 mb-3">
-              {['200', '500', '1000', '2000'].map(amt => (
+            {/* Quick Amounts */}
+            <div className="grid grid-cols-3 gap-2">
+              {['200', '500', '1000'].map(amt => (
                 <button
                   key={amt}
+                  type="button"
                   onClick={() => setTopUpAmount(amt)}
-                  className={`py-2 rounded-xl text-xs font-extrabold border transition-all ${
+                  className={`py-2 rounded-xl text-xs font-bold border transition ${
                     topUpAmount === amt
-                      ? 'bg-lime-500 text-slate-950 border-lime-500 shadow-sm'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-lime-50 border-[#3ebd19] text-[#2c980b] shadow-2xs'
+                      : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   PKR {amt}
@@ -140,25 +177,25 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
               ))}
             </div>
 
-            {/* Payment Method Selector */}
-            <span className="text-[11px] font-bold text-slate-400 block mb-2 uppercase">Select Payment Gateway</span>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            {/* Payment Method Selectors */}
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { id: 'easypaisa', label: 'EasyPaisa', icon: '🟢' },
-                { id: 'jazzcash', label: 'JazzCash', icon: '🔴' },
-                { id: 'sadapay', label: 'SadaPay', icon: '🟠' },
-                { id: 'card', label: 'Debit Card', icon: '💳' }
+                { id: 'easypaisa', label: 'EasyPaisa' },
+                { id: 'jazzcash', label: 'JazzCash' },
+                { id: 'sadapay', label: 'SadaPay' },
+                { id: 'card', label: 'Debit Card' }
               ].map(m => (
                 <button
                   key={m.id}
+                  type="button"
                   onClick={() => setSelectedMethod(m.id as any)}
-                  className={`p-2.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition-all ${
+                  className={`p-2.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition ${
                     selectedMethod === m.id
-                      ? 'border-lime-500 bg-lime-50/50 text-slate-900 ring-2 ring-lime-500/20'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  <span>{m.icon}</span>
+                  <CreditCard className="w-3.5 h-3.5" />
                   <span>{m.label}</span>
                 </button>
               ))}
@@ -167,31 +204,30 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
             <button
               onClick={handleAddFunds}
               disabled={isAddingFunds}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-lime-500 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#44b718] to-[#2ca012] text-white text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-lime-600/30 hover:brightness-105 active:scale-95 transition cursor-pointer"
             >
-              {isAddingFunds ? 'Processing Top Up...' : `Add PKR ${topUpAmount} via ${selectedMethod.toUpperCase()}`}
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>{isAddingFunds ? 'Processing...' : `Add PKR ${topUpAmount}`}</span>
             </button>
           </div>
 
-          {/* Promo Code Voucher Box */}
+          {/* Promo Code Box */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
-              <Tag className="w-4 h-4 text-emerald-600" /> Apply Promo Code
-            </h3>
-            <p className="text-xs text-slate-500 mb-3">
-              Use code <span className="font-bold text-slate-800">PESHAWAR20</span> for free bonus ride credits.
-            </p>
-            <div className="flex gap-2">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-[#3ebd19]" />
+              <span>Promo Voucher</span>
+            </h4>
+            <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Enter promo voucher"
+                placeholder="Enter Promo Code (e.g. PESHAWAR20)"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-lime-500"
               />
               <button
                 onClick={handleApplyPromo}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition cursor-pointer"
               >
                 Apply
               </button>
@@ -213,40 +249,52 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onBackToHome }) => {
                 <p className="text-xs text-slate-500">Live payment activity and ride deductions</p>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
-                {transactions.length} Activity Logs
+                {transactions.length} Logs
               </span>
             </div>
 
             <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar">
-              {transactions.map(tx => (
-                <div
-                  key={tx.id}
-                  className="p-4 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
-                      tx.type === 'credit'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-rose-100 text-rose-700'
-                    }`}>
-                      {tx.type === 'credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-800">{tx.title}</h4>
-                      <p className="text-[11px] text-slate-500">{tx.subtitle} • {tx.method}</p>
-                    </div>
+              {transactions.length === 0 ? (
+                <div className="py-16 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-3xl bg-lime-100/70 border border-lime-200 flex items-center justify-center text-[#3ebd19] mb-3">
+                    <Wallet className="w-8 h-8" />
                   </div>
-
-                  <div className="text-right shrink-0">
-                    <span className={`text-sm sm:text-base font-black ${
-                      tx.type === 'credit' ? 'text-emerald-600' : 'text-slate-900'
-                    }`}>
-                      {tx.type === 'credit' ? '+' : '-'} PKR {tx.amount}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">{tx.date}</span>
-                  </div>
+                  <h4 className="text-base font-extrabold text-slate-800">No Transactions Yet</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed">
+                    Your wallet is clean and fresh. Top up using EasyPaisa, JazzCash, or apply promo code <strong>PESHAWAR20</strong> to see real transaction history.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                transactions.map(tx => (
+                  <div
+                    key={tx.id}
+                    className="p-4 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                        tx.type === 'credit'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {tx.type === 'credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-800">{tx.title}</h4>
+                        <p className="text-[11px] text-slate-500">{tx.subtitle} • {tx.method}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className={`text-sm sm:text-base font-black ${
+                        tx.type === 'credit' ? 'text-emerald-600' : 'text-slate-900'
+                      }`}>
+                        {tx.type === 'credit' ? '+' : '-'} PKR {tx.amount}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">{tx.date}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

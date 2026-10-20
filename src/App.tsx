@@ -15,7 +15,21 @@ import { OtpNotificationBanner } from './components/OtpNotificationBanner';
 import { userStorage, type UserAccount } from './lib/supabase';
 
 export function App() {
-  const [showSplash, setShowSplash] = useState(true);
+  // Splash Screen 10-Minute Frequency Logic:
+  // If user closed and reopened within 10 minutes, skip splash screen.
+  // If > 10 minutes or first open, show splash screen.
+  const [showSplash, setShowSplash] = useState(() => {
+    const lastActive = localStorage.getItem('safargo_last_active_time');
+    if (lastActive) {
+      const elapsed = Date.now() - parseInt(lastActive, 10);
+      const TEN_MINUTES_MS = 10 * 60 * 1000;
+      if (elapsed < TEN_MINUTES_MS) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [currentView, setCurrentView] = useState<
@@ -25,8 +39,26 @@ export function App() {
   const [submittedDriverData, setSubmittedDriverData] = useState<any>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
+  // Active usage tracking for 10-minute splash frequency
+  useEffect(() => {
+    const recordActive = () => {
+      localStorage.setItem('safargo_last_active_time', Date.now().toString());
+    };
+
+    const interval = setInterval(recordActive, 30000);
+    window.addEventListener('beforeunload', recordActive);
+    document.addEventListener('visibilitychange', recordActive);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', recordActive);
+      document.removeEventListener('visibilitychange', recordActive);
+    };
+  }, []);
+
   const handleSplashComplete = () => {
     setShowSplash(false);
+    localStorage.setItem('safargo_last_active_time', Date.now().toString());
     const onboardingDone = localStorage.getItem('safargo_onboarding_completed_v1');
     if (!onboardingDone) {
       setShowOnboarding(true);
@@ -54,6 +86,26 @@ export function App() {
       }
     }
   }, []);
+
+  // Listen for Admin Driver Approval Event
+  useEffect(() => {
+    const handleDriverApprovedEvent = (e: any) => {
+      const approvedApp = e.detail;
+      if (currentUser && (approvedApp.userId === currentUser.id || approvedApp.phone === currentUser.phone)) {
+        localStorage.setItem(`safargo_driver_registered_${currentUser.id}`, 'true');
+        localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');
+        const updated = userStorage.updateRole(currentUser.id, 'driver');
+        if (updated) {
+          setCurrentUser(updated);
+        }
+        // Switch to driver-panel when admin officially approves!
+        setCurrentView('driver-panel');
+      }
+    };
+
+    window.addEventListener('safargo-driver-approved', handleDriverApprovedEvent);
+    return () => window.removeEventListener('safargo-driver-approved', handleDriverApprovedEvent);
+  }, [currentUser]);
 
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
@@ -101,15 +153,11 @@ export function App() {
   const handleDriverApplicationSubmitted = (driverData: any) => {
     setSubmittedDriverData(driverData);
     if (currentUser) {
-      localStorage.setItem(`safargo_driver_registered_${currentUser.id}`, 'true');
+      localStorage.setItem(`safargo_driver_registered_${currentUser.id}`, 'pending');
       localStorage.setItem(`safargo_driver_data_${currentUser.id}`, JSON.stringify(driverData));
-      localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');
-      const updated = userStorage.updateRole(currentUser.id, 'driver');
-      if (updated) {
-        setCurrentUser(updated);
-      }
     }
-    setCurrentView('driver-panel');
+    // Form is now pending admin review! Only Admin can approve it.
+    setCurrentView('driver-pending');
   };
 
   const handleDriverPendingToPassenger = () => {
@@ -138,6 +186,7 @@ export function App() {
   const isAuthView = 
     currentView === 'login' || 
     currentView === 'signup' || 
+    currentView === 'category' ||
     currentView === 'driver-application' || 
     currentView === 'driver-pending';
 
@@ -237,6 +286,12 @@ export function App() {
                 user={currentUser}
                 driverData={submittedDriverData}
                 onGoToPassengerHome={handleDriverPendingToPassenger}
+                onEnterDriverPanel={() => {
+                  if (currentUser) {
+                    localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');
+                  }
+                  setCurrentView('driver-panel');
+                }}
               />
             </motion.div>
           )}

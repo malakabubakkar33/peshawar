@@ -3,24 +3,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, ArrowRight, User, Mail, Phone, 
   Camera, Upload, Check, Eye, EyeOff, 
-  Shield, ShieldCheck, AlertCircle, Loader2
+  AlertCircle, RotateCcw, KeyRound, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AVATAR_PRESETS } from '../lib/peshawarData';
 import { userStorage, checkFieldUniqueness, registerUserWithSupabase, type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
+import { sendVerificationOtpEmail, generateSixDigitOtp, verifyEnteredOtp } from '../lib/emailService';
+import { ImageCropperModal } from './ImageCropperModal';
 
 interface SignupFlowProps {
   onBackToLogin: () => void;
   onSignupComplete: (user: UserAccount) => void;
 }
 
+type SignupStep = 1 | 'otp' | 2 | 3 | 4 | 5;
+
 export const SignupFlow: React.FC<SignupFlowProps> = ({
   onBackToLogin,
   onSignupComplete
 }) => {
-  // Steps: 1: Personal Info, 2: Security, 3: Profile Picture, 4: Review, 5: Success (Account Created!)
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  // Steps: 1: Personal Info, 'otp': Email OTP Verification, 2: Security, 3: Profile Picture, 4: Review, 5: Account Created
+  const [currentStep, setCurrentStep] = useState<SignupStep>(1);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -30,18 +34,33 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   const [selectedAvatar, setSelectedAvatar] = useState<string>(AVATAR_PRESETS[0]?.url || '/passenger-real.jpg');
   const [customAvatarPreview, setCustomAvatarPreview] = useState<string | null>(null);
 
+  // OTP Verification States
+  const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpTimerSeconds, setOtpTimerSeconds] = useState(60);
+  const [canResendOtp, setCanResendOtp] = useState(false);
+  const [otpDispatchedEmail, setOtpDispatchedEmail] = useState('');
+
+  // Password / Security States
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Final submission & Modal states
   const [createdUser, setCreatedUser] = useState<UserAccount | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingUnique, setIsCheckingUnique] = useState(false);
   const [conflictField, setConflictField] = useState<'email' | 'phone' | 'username' | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
 
+  // Image Cropper State
+  const [rawImageForCrop, setRawImageForCrop] = useState<string | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showTimedError = (msg: string) => {
@@ -58,13 +77,30 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     };
   }, []);
 
-  // Password Validation Rules (as shown in reference image)
+  // OTP Countdown Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (currentStep === 'otp' && otpTimerSeconds > 0) {
+      interval = setInterval(() => {
+        setOtpTimerSeconds(prev => {
+          if (prev <= 1) {
+            setCanResendOtp(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [currentStep, otpTimerSeconds]);
+
+  // Password Validation Rules
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[^A-Za-z0-9]/.test(password);
 
-  // Trigger celebration on reaching Step 5
+  // Celebration on reaching Step 5
   useEffect(() => {
     if (currentStep === 5) {
       sound.playSuccess();
@@ -77,7 +113,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     }
   }, [currentStep]);
 
-  // Step 1: Personal Information Validation with Real-time Supabase Uniqueness Check
+  // Step 1: Personal Information Validation & Real OTP Dispatch
   const handleStep1Next = async (e: React.FormEvent) => {
     e.preventDefault();
     sound.playClick();
@@ -112,7 +148,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     setIsCheckingUnique(true);
 
     try {
-      // Check whether email, phone, or username is already taken
+      // Check whether email, phone, or username is already taken in Supabase/storage
       const check = await checkFieldUniqueness(email, phone, username);
 
       if (!check.valid) {
@@ -123,12 +159,136 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         return;
       }
 
+      // Generate 6-digit OTP and send to user's real email via Resend API
+      setIsSendingOtp(true);
+      const generatedCode = generateSixDigitOtp();
+      const sendRes = await sendVerificationOtpEmail(email, generatedCode, fullName);
+
       setIsCheckingUnique(false);
-      setCurrentStep(2);
+      setIsSendingOtp(false);
+
+      if (!sendRes.success && sendRes.error) {
+        showTimedError(sendRes.error);
+        sound.playError();
+        // Still proceed to OTP screen with generated code so user isn't stuck
+      }
+
+      setOtpDispatchedEmail(email);
+      setOtpValues(['', '', '', '', '', '']);
+      setOtpTimerSeconds(60);
+      setCanResendOtp(false);
+      setCurrentStep('otp');
+
+      // Focus first OTP input
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 200);
+
     } catch (err) {
       setIsCheckingUnique(false);
-      setCurrentStep(2);
+      setIsSendingOtp(false);
+      setCurrentStep('otp');
     }
+  };
+
+  // OTP Input Handlers (Support typing, pasting, backspacing)
+  const handleOtpChange = (index: number, val: string) => {
+    // Only accept numbers
+    const clean = val.replace(/\D/g, '');
+    if (!clean) {
+      const copy = [...otpValues];
+      copy[index] = '';
+      setOtpValues(copy);
+      return;
+    }
+
+    // Single character input
+    const copy = [...otpValues];
+    copy[index] = clean.slice(-1);
+    setOtpValues(copy);
+
+    // Auto-advance to next box
+    if (index < 5 && clean.length > 0) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').trim().replace(/\D/g, '');
+    if (!pasted) return;
+
+    const copy = [...otpValues];
+    for (let i = 0; i < 6; i++) {
+      if (pasted[i]) {
+        copy[i] = pasted[i];
+      }
+    }
+    setOtpValues(copy);
+
+    const nextIndex = Math.min(pasted.length, 5);
+    otpInputRefs.current[nextIndex]?.focus();
+  };
+
+  // Resend OTP Code
+  const handleResendOtp = async () => {
+    if (!canResendOtp || isSendingOtp) return;
+    sound.playClick();
+    setIsSendingOtp(true);
+    setStepError(null);
+
+    const newCode = generateSixDigitOtp();
+    const res = await sendVerificationOtpEmail(email, newCode, fullName);
+    setIsSendingOtp(false);
+
+    if (res.success) {
+      sound.playSuccess();
+      setOtpTimerSeconds(60);
+      setCanResendOtp(false);
+      setOtpValues(['', '', '', '', '', '']);
+      otpInputRefs.current[0]?.focus();
+    } else {
+      showTimedError(res.error || 'Failed to resend code. Please try again.');
+      sound.playError();
+    }
+  };
+
+  // Verify OTP Action
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    sound.playClick();
+    setStepError(null);
+
+    const fullCode = otpValues.join('');
+    if (fullCode.length < 6) {
+      showTimedError('Baraye meharbani mukammal 6-digit code darj karein.');
+      sound.playError();
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+
+    setTimeout(() => {
+      const verification = verifyEnteredOtp(otpDispatchedEmail || email, fullCode);
+
+      if (!verification.valid) {
+        setIsVerifyingOtp(false);
+        showTimedError(verification.message || 'Ghalat code. Dobara check karein.');
+        sound.playError();
+        return;
+      }
+
+      setIsVerifyingOtp(false);
+      sound.playSuccess();
+      // Code verified successfully -> proceed to Step 2 (Security)
+      setCurrentStep(2);
+    }, 600);
   };
 
   // Step 2: Security Validation
@@ -158,7 +318,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
       return; 
     }
     if (password !== confirmPassword) { 
-      showTimedError('Passwords do not match.'); 
+      showTimedError('Passwords do not match. Please re-enter.'); 
       sound.playError(); 
       return; 
     }
@@ -166,64 +326,58 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     setCurrentStep(3);
   };
 
-  // Step 3: Profile Picture with auto-compression to prevent localStorage quota issues
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 3: Handle File Selected for Avatar -> Open In-App Cropper Modal
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        showTimedError('Image size exceeds 8MB limit.');
-        sound.playError();
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const rawUrl = reader.result as string;
-        // Use an offscreen image & canvas to resize to compact 180x180 thumbnail
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 180;
-          canvas.height = 180;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, 180, 180);
-            const compressed = canvas.toDataURL('image/jpeg', 0.8);
-            setCustomAvatarPreview(compressed);
-          } else {
-            setCustomAvatarPreview(rawUrl);
-          }
-          sound.playClick();
-        };
-        img.onerror = () => {
-          setCustomAvatarPreview(rawUrl);
-          sound.playClick();
-        };
-        img.src = rawUrl;
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showTimedError('Please select a valid image file (JPG, PNG, WebP).');
+      return;
     }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showTimedError('Image size exceeds 15MB limit. Please select a smaller photo.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setRawImageForCrop(dataUrl);
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    e.target.value = '';
   };
 
+  const handleCropComplete = (croppedDataUrl: string) => {
+    setCustomAvatarPreview(croppedDataUrl);
+    sound.playSuccess();
+  };
+
+  // Step 3: Next -> Step 4 Review
   const handleStep3Next = () => {
     sound.playClick();
     setCurrentStep(4);
   };
 
-  // Step 4: Final Account Creation with Supabase Sync
-  const handleCreateAccount = async () => {
+  // Step 4: Final Submit to Supabase / Storage
+  const handleFinalSubmit = async () => {
     sound.playClick();
     setIsSubmitting(true);
     setStepError(null);
 
-    const avatarUrl = customAvatarPreview || selectedAvatar || '/passenger-real.jpg';
+    const activeAvatar = customAvatarPreview || selectedAvatar;
+
     const newUser: UserAccount = {
-      id: `user-${Date.now()}`,
-      fullName: fullName.trim() || 'SafarGo User',
-      email: email.trim().toLowerCase(),
+      id: 'usr_' + Date.now().toString(),
+      fullName: fullName.trim(),
+      email: email.trim(),
       phone: phone.trim(),
-      username: username.trim().toLowerCase(),
-      avatarUrl,
-      password: password,
+      username: username.trim(),
+      avatarUrl: activeAvatar,
       role: 'passenger',
       city: 'Peshawar',
       walletBalance: 0,
@@ -231,17 +385,21 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     };
 
     try {
-      const res = await registerUserWithSupabase(newUser, password);
+      const res = await registerUserWithSupabase(
+        newUser,
+        password
+      );
+
       if (!res.success) {
-        showTimedError(res.error || 'Account banate waqt masla aya. Baraye meharbani dobara koshish karein.');
-        sound.playError();
+        showTimedError(res.error || 'Failed to create account. Please try again.');
         setIsSubmitting(false);
+        sound.playError();
         return;
       }
 
       setCreatedUser(res.user || newUser);
       setIsSubmitting(false);
-      setCurrentStep(5); // Show Account Created Success Screen!
+      setCurrentStep(5); // Show Account Created Success Screen
     } catch (err: any) {
       console.error('Account creation error:', err);
       userStorage.addUser(newUser);
@@ -252,7 +410,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
     }
   };
 
-  // Step 5: Continue to Dashboard
+  // Step 5: Finish -> Continue to Dashboard
   const handleFinishSuccess = () => {
     sound.playClick();
     if (createdUser) {
@@ -268,16 +426,16 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center justify-between px-4 py-6 sm:py-8 overflow-hidden bg-[#fafdf8] selection:bg-[#3ebd19]/20 selection:text-slate-900">
       
-      {/* Background Corner Wave Graphics matching SafarGo Theme */}
+      {/* Background Corner Wave Graphics */}
       <div className="fixed top-0 left-0 w-[160px] sm:w-[200px] h-[160px] sm:h-[200px] pointer-events-none z-0 select-none opacity-75">
-        <svg viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <svg viewBox="0 0 360 360" fill="none" className="w-full h-full">
           <path d="M0 0 L0 320 C90 310 180 260 250 180 C310 110 340 50 350 0 Z" fill="#6fd622" fillOpacity="0.25" />
           <path d="M0 0 L0 250 C70 240 140 200 190 140 C240 80 270 30 280 0 Z" fill="#48bb13" fillOpacity="0.35" />
         </svg>
       </div>
 
       <div className="fixed bottom-0 right-0 w-[180px] sm:w-[240px] h-[180px] sm:h-[240px] pointer-events-none z-0 select-none opacity-60">
-        <svg viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <svg viewBox="0 0 360 360" fill="none" className="w-full h-full">
           <path d="M360 360 L360 40 C270 50 180 100 110 180 C50 250 20 310 10 360 Z" fill="#55c218" fillOpacity="0.3" />
         </svg>
       </div>
@@ -301,7 +459,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         </AnimatePresence>
 
         {/* ========================================================================= */}
-        {/* STEP 1: PERSONAL INFORMATION (Image 1)                                    */}
+        {/* STEP 1: PERSONAL INFORMATION                                              */}
         {/* ========================================================================= */}
         {currentStep === 1 && (
           <motion.div
@@ -330,7 +488,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
               </p>
             </div>
 
-            {/* Input Cards with Light Green Circular Badges */}
+            {/* Input Cards */}
             <form onSubmit={handleStep1Next} className="space-y-3.5">
               
               {/* Full Name */}
@@ -454,18 +612,19 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
                 </div>
               </div>
 
-              {/* Next Button */}
+              {/* Next Button with Dot Loading (No clunky text!) */}
               <div className="pt-4">
                 <button
                   type="submit"
-                  disabled={isCheckingUnique}
+                  disabled={isCheckingUnique || isSendingOtp}
                   className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-75 disabled:cursor-wait"
                 >
-                  {isCheckingUnique ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Checking with Supabase...</span>
-                    </>
+                  {isCheckingUnique || isSendingOtp ? (
+                    <div className="flex items-center gap-1.5 py-1">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
                   ) : (
                     <>
                       <span>Next</span>
@@ -493,11 +652,11 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 2: SECURITY (Image 2)                                                */}
+        {/* STEP OTP: 6-DIGIT EMAIL VERIFICATION (Dispatched via Resend API)          */}
         {/* ========================================================================= */}
-        {currentStep === 2 && (
+        {currentStep === 'otp' && (
           <motion.div
-            key="step2"
+            key="step-otp"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -512,96 +671,190 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
+            {/* Title & Email Badge */}
+            <div className="mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-[#e6f8d8] text-[#3ebd19] flex items-center justify-center mb-3 shadow-sm border border-lime-200">
+                <KeyRound className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#0f172a] tracking-tight">
+                Verify Your Email
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1 leading-relaxed">
+                We sent a 6-digit verification code to <br />
+                <strong className="text-slate-800">{otpDispatchedEmail || email}</strong>
+              </p>
+            </div>
+
+            {/* 6-Digit OTP Form */}
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              {/* Individual Input Boxes */}
+              <div className="flex items-center justify-between gap-2 sm:gap-2.5">
+                {otpValues.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => { otpInputRefs.current[idx] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    onPaste={idx === 0 ? handleOtpPaste : undefined}
+                    className="w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-black rounded-2xl bg-white border-2 border-slate-200 focus:border-[#3ebd19] focus:ring-4 focus:ring-[#3ebd19]/15 text-slate-900 shadow-sm transition outline-none"
+                  />
+                ))}
+              </div>
+
+              {/* Countdown & Resend Option */}
+              <div className="text-center pt-1">
+                {canResendOtp ? (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isSendingOtp}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#3ebd19] hover:text-[#2c980b] transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Resend Code to Email</span>
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-400 font-medium">
+                    Resend code in <strong className="text-slate-700 font-bold">{otpTimerSeconds}s</strong>
+                  </p>
+                )}
+              </div>
+
+              {/* Verify Button with Dot Loading */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isVerifyingOtp}
+                  className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-75 disabled:cursor-wait"
+                >
+                  {isVerifyingOtp ? (
+                    <div className="flex items-center gap-1.5 py-1">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  ) : (
+                    <>
+                      <span>Verify Code</span>
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-6 p-3 rounded-2xl bg-[#f8faf7] border border-lime-200/80 text-[11px] text-slate-500 text-center">
+              💡 Please check your Gmail inbox or spam folder. You can easily copy and paste the 6-digit code.
+            </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* STEP 2: SECURITY                                                          */}
+        {/* ========================================================================= */}
+        {currentStep === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="w-full flex flex-col"
+          >
+            {/* Top Back Button */}
+            <button
+              type="button"
+              onClick={() => setCurrentStep('otp')}
+              className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer mb-5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+
             {/* Title & Subtitle */}
             <div className="mb-6">
               <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#0f172a] tracking-tight">
                 Security
               </h2>
               <p className="text-slate-500 text-sm mt-1">
-                Set a strong password to keep your account safe
+                Set a strong password for your account
               </p>
             </div>
 
             <form onSubmit={handleStep2Next} className="space-y-4">
-              
-              {/* Password Field */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 pl-0.5">
+              {/* Password Input */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 shadow-sm transition-all focus-within:border-[#3ebd19] focus-within:ring-4 focus-within:ring-[#3ebd19]/10">
+                <label className="block text-[11px] font-bold text-slate-700 leading-none mb-1">
                   Password
                 </label>
-                <div className="relative flex items-center bg-white border border-slate-200/90 rounded-2xl px-4 py-3 shadow-sm transition-all focus-within:border-[#3ebd19] focus-within:ring-4 focus-within:ring-[#3ebd19]/10">
+                <div className="flex items-center justify-between">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); if (stepError) setStepError(null); }}
                     placeholder="Create a strong password"
-                    className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none pr-2"
+                    className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer shrink-0"
+                    className="text-slate-400 hover:text-slate-600 transition ml-2 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Confirm Password Field */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 pl-0.5">
+              {/* Confirm Password Input */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-3.5 shadow-sm transition-all focus-within:border-[#3ebd19] focus-within:ring-4 focus-within:ring-[#3ebd19]/10">
+                <label className="block text-[11px] font-bold text-slate-700 leading-none mb-1">
                   Confirm Password
                 </label>
-                <div className="relative flex items-center bg-white border border-slate-200/90 rounded-2xl px-4 py-3 shadow-sm transition-all focus-within:border-[#3ebd19] focus-within:ring-4 focus-within:ring-[#3ebd19]/10">
+                <div className="flex items-center justify-between">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); if (stepError) setStepError(null); }}
                     placeholder="Re-enter your password"
-                    className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none pr-2"
+                    className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer shrink-0"
+                    className="text-slate-400 hover:text-slate-600 transition ml-2 cursor-pointer"
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Password Requirement Helper Card (Exact Image 2 Match) */}
-              <div className="bg-[#f2faf0] border border-[#d2f0cc] rounded-2xl p-4 flex gap-3.5 shadow-sm mt-3">
-                <div className="shrink-0 pt-0.5 text-[#3bb516]">
-                  <Shield className="w-6 h-6 fill-[#3bb516]/20 text-[#3bb516]" />
-                </div>
-                <div className="space-y-2 text-xs">
-                  <p className="font-bold text-[#20630d]">
-                    Password must have:
-                  </p>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 font-medium">
-                      <Check className={`w-3.5 h-3.5 ${hasMinLength ? 'text-[#3ebd19] stroke-[3]' : 'text-slate-400'}`} />
-                      <span className={hasMinLength ? 'text-slate-800 font-semibold' : 'text-slate-500'}>At least 8 characters</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <Check className={`w-3.5 h-3.5 ${hasUppercase ? 'text-[#3ebd19] stroke-[3]' : 'text-slate-400'}`} />
-                      <span className={hasUppercase ? 'text-slate-800 font-semibold' : 'text-slate-500'}>One uppercase letter</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <Check className={`w-3.5 h-3.5 ${hasNumber ? 'text-[#3ebd19] stroke-[3]' : 'text-slate-400'}`} />
-                      <span className={hasNumber ? 'text-slate-800 font-semibold' : 'text-slate-500'}>One number</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <Check className={`w-3.5 h-3.5 ${hasSpecial ? 'text-[#3ebd19] stroke-[3]' : 'text-slate-400'}`} />
-                      <span className={hasSpecial ? 'text-slate-800 font-semibold' : 'text-slate-500'}>One special character</span>
-                    </div>
+              {/* Password Requirement Badges */}
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-2">
+                <div className="text-[11px] font-bold text-slate-700 mb-1">Password must contain:</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-[#2e8a11] font-bold' : 'text-slate-400'}`}>
+                    <Check className={`w-3.5 h-3.5 ${hasMinLength ? 'text-[#3ebd19]' : 'text-slate-300'}`} />
+                    <span>8+ characters</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-[#2e8a11] font-bold' : 'text-slate-400'}`}>
+                    <Check className={`w-3.5 h-3.5 ${hasUppercase ? 'text-[#3ebd19]' : 'text-slate-300'}`} />
+                    <span>1 uppercase letter</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-[#2e8a11] font-bold' : 'text-slate-400'}`}>
+                    <Check className={`w-3.5 h-3.5 ${hasNumber ? 'text-[#3ebd19]' : 'text-slate-300'}`} />
+                    <span>1 number</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-[#2e8a11] font-bold' : 'text-slate-400'}`}>
+                    <Check className={`w-3.5 h-3.5 ${hasSpecial ? 'text-[#3ebd19]' : 'text-slate-300'}`} />
+                    <span>1 special character</span>
                   </div>
                 </div>
               </div>
 
               {/* Next Button */}
-              <div className="pt-4">
+              <div className="pt-2">
                 <button
                   type="submit"
                   className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer"
@@ -615,7 +868,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 3: PROFILE PICTURE (Image 3)                                         */}
+        {/* STEP 3: PROFILE PICTURE (With Professional In-App Cropper)               */}
         {/* ========================================================================= */}
         {currentStep === 3 && (
           <motion.div
@@ -640,88 +893,93 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
                 Profile Picture
               </h2>
               <p className="text-slate-500 text-sm mt-1">
-                Upload a clear photo of yourself
+                Upload a photo or choose an avatar
               </p>
-            </div>
-
-            {/* Center Big Circular Avatar with Green Ring & Camera Icon */}
-            <div className="flex flex-col items-center justify-center my-2">
-              <div className="relative">
-                <div className="w-36 h-36 rounded-full border-[3px] border-[#3ebd19] p-1 shadow-sm flex items-center justify-center bg-white">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-[#e6eae6] flex items-center justify-center">
-                    {activeAvatar ? (
-                      <img 
-                        src={activeAvatar} 
-                        alt="Profile Preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-16 h-16 text-slate-400 fill-current" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Camera Icon Button */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-[#1e293b] text-white flex items-center justify-center shadow-md hover:bg-slate-900 transition cursor-pointer"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-              </div>
             </div>
 
             {/* Hidden File Input */}
             <input
-              type="file"
               ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept="image/png, image/jpeg, image/webp"
+              type="file"
+              accept="image/*"
               className="hidden"
+              onChange={handleAvatarFileChange}
             />
 
-            {/* Dotted Upload Photo Box */}
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="my-5 border-2 border-dashed border-[#86efac] hover:border-[#3ebd19] bg-[#f8fdf6] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1 group"
-            >
-              <div className="flex items-center gap-2 text-[#3bb516] font-bold text-sm">
-                <Upload className="w-4 h-4" />
-                <span>Upload Photo</span>
+            {/* Current Active Avatar Preview */}
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-xl bg-slate-100 flex items-center justify-center ring-4 ring-[#3ebd19]/25">
+                  <img
+                    src={activeAvatar}
+                    alt="Active Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-9 h-9 rounded-full bg-[#3ebd19] text-white flex items-center justify-center shadow-lg border-2 border-white hover:scale-105 active:scale-95 transition cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">
-                JPG, PNG (Max 5MB)
-              </p>
+
+              {customAvatarPreview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawImageForCrop(customAvatarPreview);
+                    setIsCropModalOpen(true);
+                  }}
+                  className="mt-3 text-xs font-bold text-[#3ebd19] hover:underline flex items-center gap-1"
+                >
+                  <span>Re-crop Photo</span>
+                </button>
+              )}
             </div>
 
-            {/* 3 Circular Avatar Presets */}
-            <div className="flex items-center justify-center gap-4 my-2">
-              {AVATAR_PRESETS.slice(0, 3).map((preset) => {
-                const isSelected = selectedAvatar === preset.url && !customAvatarPreview;
-                return (
+            {/* Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full py-3 px-4 rounded-2xl bg-white border border-dashed border-slate-300 hover:border-[#3ebd19] text-slate-700 text-xs font-bold flex items-center justify-center gap-2 shadow-2xs hover:bg-slate-50 transition mb-5 cursor-pointer"
+            >
+              <Upload className="w-4 h-4 text-[#3ebd19]" />
+              <span>Upload & Crop Custom Photo</span>
+            </button>
+
+            {/* Avatar Presets Selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Or Choose from Presets
+              </label>
+
+              <div className="grid grid-cols-4 gap-2.5">
+                {AVATAR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => {
-                      setCustomAvatarPreview(null);
-                      setSelectedAvatar(preset.url);
                       sound.playClick();
+                      setSelectedAvatar(preset.url);
+                      setCustomAvatarPreview(null);
                     }}
-                    className={`w-14 h-14 rounded-full p-0.5 transition-all cursor-pointer ${
-                      isSelected 
-                        ? 'ring-2 ring-[#3ebd19] ring-offset-2 scale-105' 
-                        : 'opacity-70 hover:opacity-100 hover:scale-105'
+                    className={`relative rounded-2xl overflow-hidden border-2 p-1 transition cursor-pointer ${
+                      selectedAvatar === preset.url && !customAvatarPreview
+                        ? 'border-[#3ebd19] ring-2 ring-[#3ebd19]/30 scale-105 bg-lime-50'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}
                   >
-                    <img 
-                      src={preset.url} 
-                      alt={preset.name} 
-                      className="w-full h-full rounded-full object-cover shadow-sm"
+                    <img
+                      src={preset.url}
+                      alt={preset.name}
+                      className="w-full h-14 object-cover rounded-xl"
                     />
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
 
             {/* Next Button */}
@@ -731,7 +989,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
                 onClick={handleStep3Next}
                 className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer"
               >
-                <span>Next</span>
+                <span>Continue to Review</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
@@ -739,7 +997,7 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 4: REVIEW & COMPLETE (Image 4)                                       */}
+        {/* STEP 4: REVIEW & CONFIRM REGISTRATION                                     */}
         {/* ========================================================================= */}
         {currentStep === 4 && (
           <motion.div
@@ -758,192 +1016,121 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            {/* Title & Subtitle */}
+            {/* Title */}
             <div className="mb-6">
               <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#0f172a] tracking-tight">
-                Review & Complete
+                Review Information
               </h2>
               <p className="text-slate-500 text-sm mt-1">
-                Please check your information before creating your account.
+                Confirm your details before creating your account
               </p>
             </div>
 
-            {/* Review Card with Clean Rows and 'Edit' Links */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
-              
-              {/* Full Name */}
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-[#e6f8d8] flex items-center justify-center shrink-0 text-[#3bb516]">
-                    <User className="w-4 h-4 fill-current stroke-none" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-700">Full Name</p>
-                    <p className="text-xs font-semibold text-slate-900 truncate">{fullName || 'Malik Abubakkar'}</p>
-                  </div>
+            {/* Summary Card */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm space-y-4 mb-6">
+              <div className="flex items-center gap-3.5 pb-3 border-b border-slate-100">
+                <img
+                  src={activeAvatar}
+                  alt="Profile"
+                  className="w-14 h-14 rounded-full object-cover border-2 border-lime-300"
+                />
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                    {fullName}
+                  </h3>
+                  <span className="text-xs text-[#3ebd19] font-bold">@{username}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs font-bold text-[#3ebd19] hover:text-[#2fa212] ml-2 cursor-pointer"
-                >
-                  Edit
-                </button>
               </div>
 
-              {/* Email Address */}
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-[#e6f8d8] flex items-center justify-center shrink-0 text-[#3bb516]">
-                    <Mail className="w-4 h-4 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-700">Email Address</p>
-                    <p className="text-xs font-semibold text-slate-900 truncate">{email || 'malik@gmail.com'}</p>
-                  </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Email Address:</span>
+                  <span className="text-slate-800 font-bold">{email}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs font-bold text-[#3ebd19] hover:text-[#2fa212] ml-2 cursor-pointer"
-                >
-                  Edit
-                </button>
-              </div>
-
-              {/* Phone Number */}
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-[#e6f8d8] flex items-center justify-center shrink-0 text-[#3bb516]">
-                    <Phone className="w-4 h-4 fill-current stroke-none" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-700">Phone Number</p>
-                    <p className="text-xs font-semibold text-slate-900 truncate">{phone || '+92 312 3456789'}</p>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Phone Number:</span>
+                  <span className="text-slate-800 font-bold">{phone}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs font-bold text-[#3ebd19] hover:text-[#2fa212] ml-2 cursor-pointer"
-                >
-                  Edit
-                </button>
-              </div>
-
-              {/* Username */}
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-[#e6f8d8] flex items-center justify-center shrink-0 text-[#3bb516]">
-                    <User className="w-4 h-4 fill-current stroke-none" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-700">Username</p>
-                    <p className="text-xs font-semibold text-slate-900 truncate">{username || 'malik123'}</p>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">City:</span>
+                  <span className="text-slate-800 font-bold">Peshawar (PK)</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs font-bold text-[#3ebd19] hover:text-[#2fa212] ml-2 cursor-pointer"
-                >
-                  Edit
-                </button>
-              </div>
-
-            </div>
-
-            {/* Information Security Banner */}
-            <div className="bg-[#f2faf0] border border-[#d2f0cc] rounded-2xl p-3.5 flex items-center gap-3 mt-4 shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-[#3bb516] shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-[#1f5f0d]">
-                  Your information is secure
-                </p>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  and will only be used for your account.
-                </p>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Email Verification:</span>
+                  <span className="text-[#2e8a11] font-bold">✓ 6-Digit Code Verified</span>
+                </div>
               </div>
             </div>
 
-            {/* Create Account Button */}
-            <div className="pt-6">
-              <button
-                type="button"
-                onClick={handleCreateAccount}
-                disabled={isSubmitting}
-                className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-60"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>CREATING ACCOUNT...</span>
-                  </div>
-                ) : (
-                  <>
-                    <span>Create Account</span>
-                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Submit Action */}
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleFinalSubmit}
+              className="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-75 disabled:cursor-wait"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-1.5 py-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              ) : (
+                <>
+                  <span>Create Account</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </>
+              )}
+            </button>
           </motion.div>
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 5: ACCOUNT CREATED SUCCESS SCREEN (Image 5)                          */}
+        {/* STEP 5: SUCCESS (Account Created Celebration!)                            */}
         {/* ========================================================================= */}
         {currentStep === 5 && (
           <motion.div
             key="step5"
-            initial={{ opacity: 0, scale: 0.92 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="w-full flex flex-col items-center justify-center text-center py-6"
+            className="w-full flex flex-col items-center text-center"
           >
-            {/* Animated Celebratory Badge with Confetti Halo */}
-            <div className="relative my-4">
-              {/* Soft Pulsing Green Glow Backdrop */}
-              <div className="absolute inset-0 w-28 h-28 -m-2 rounded-full bg-[#3ebd19]/20 blur-xl animate-pulse"></div>
-              
-              {/* Main Badge */}
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-[#31a312] via-[#42b617] to-[#60cc23] flex items-center justify-center shadow-[0_12px_30px_rgba(62,189,25,0.4)] text-white">
-                <Check className="w-12 h-12 stroke-[3.5]" />
-              </div>
+            <div className="w-20 h-20 rounded-full bg-[#e6f8d8] text-[#3ebd19] flex items-center justify-center mb-4 shadow-lg shadow-lime-500/20 border-2 border-lime-200">
+              <Check className="w-10 h-10 stroke-[3]" />
             </div>
 
-            {/* Headline & Subtitle */}
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight mt-6">
-              Account Created!
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-100 text-[#2c980b] text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Account Activated</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">
+              Welcome to SafarGo!
             </h2>
-            <p className="text-slate-500 text-sm mt-2 max-w-xs leading-relaxed">
-              Your SafarGo account has been successfully created.
+            <p className="text-xs sm:text-sm text-slate-500 max-w-xs mb-6 leading-relaxed">
+              Assalam-o-Alaikum, <strong>{fullName}</strong>! Your account has been verified and registered successfully.
             </p>
 
-            {/* Continue Button */}
-            <div className="w-full pt-8">
-              <button
-                type="button"
-                onClick={handleFinishSuccess}
-                className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer"
-              >
-                <span>Continue</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </button>
-            </div>
-
-            {/* Bottom Bab-e-Khyber Peshawar Landmark Heritage Illustration */}
-            <div className="w-full mt-12 flex flex-col items-center justify-center select-none pointer-events-none opacity-90">
-              <img 
-                src="/peshawar-skyline-clean.png" 
-                alt="Peshawar Heritage Skyline" 
-                className="w-full max-w-[380px] h-auto object-contain" 
-              />
-            </div>
+            <button
+              type="button"
+              onClick={handleFinishSuccess}
+              className="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            </button>
           </motion.div>
         )}
 
       </div>
+
+      {/* Professional In-App Image Cropper Modal */}
+      <ImageCropperModal
+        isOpen={isCropModalOpen}
+        imageSrc={rawImageForCrop}
+        onClose={() => setIsCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 };

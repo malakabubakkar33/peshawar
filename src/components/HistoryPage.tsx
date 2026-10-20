@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  ArrowLeft, Search, Clock, Download, RotateCcw, CheckCircle2 
+  ArrowLeft, Search, RotateCcw, CheckCircle2, Car, Compass
 } from 'lucide-react';
-import { SAMPLE_RIDE_HISTORY, type HistoryRide } from '../lib/peshawarData';
+import { type HistoryRide } from '../lib/peshawarData';
 
 interface HistoryPageProps {
   onBackToHome: () => void;
@@ -14,7 +14,17 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
   const [filterType, setFilterType] = useState<'all' | 'bike' | 'car' | 'cargo'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredRides = SAMPLE_RIDE_HISTORY.filter(ride => {
+  // Start with clean, fresh history populated only from real user rides
+  const [rides] = useState<HistoryRide[]>(() => {
+    try {
+      const saved = localStorage.getItem('safargo_user_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const filteredRides = rides.filter(ride => {
     const matchesFilter = filterType === 'all' || ride.type === filterType;
     const matchesSearch = 
       ride.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -22,6 +32,12 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
       ride.driverName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  // Calculate real distance
+  const totalDistance = rides.reduce((acc, r) => {
+    const km = parseFloat(r.distance) || 0;
+    return acc + km;
+  }, 0);
 
   return (
     <div className="w-full min-h-screen bg-slate-50 pt-20 pb-28 px-4 sm:px-8 max-w-5xl mx-auto">
@@ -44,15 +60,15 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
           </div>
         </div>
 
-        {/* Quick Stats Pill */}
+        {/* Real Dynamic Stats Pill */}
         <div className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="px-3 py-1 bg-lime-50 rounded-xl border border-lime-200 text-center">
             <span className="text-[10px] text-lime-700 font-bold uppercase tracking-wider block">Completed</span>
-            <span className="text-base font-extrabold text-slate-900">12 Rides</span>
+            <span className="text-base font-extrabold text-slate-900">{rides.length} Rides</span>
           </div>
           <div className="px-3 py-1 bg-slate-50 rounded-xl border border-slate-200 text-center">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Dist</span>
-            <span className="text-base font-extrabold text-slate-900">74.2 km</span>
+            <span className="text-base font-extrabold text-slate-900">{totalDistance.toFixed(1)} km</span>
           </div>
         </div>
       </div>
@@ -76,7 +92,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
             <button
               key={tab}
               onClick={() => setFilterType(tab)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
                 filterType === tab
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -91,12 +107,21 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
       {/* Rides List */}
       <div className="space-y-4">
         {filteredRides.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-            <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-800">No rides found</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              We couldn't find any trips matching your current filter. Try searching for a different landmark.
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-10 flex flex-col items-center">
+            <div className="w-16 h-16 rounded-3xl bg-lime-100/70 border border-lime-200 flex items-center justify-center text-[#3ebd19] mb-4 shadow-sm">
+              <Compass className="w-8 h-8 animate-pulse" />
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Rides Yet</h3>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">
+              You haven't taken any trips yet. As you book rides across Peshawar, your complete trip receipts and route history will appear here.
             </p>
+            <button
+              onClick={onBackToHome}
+              className="py-3 px-6 rounded-full bg-gradient-to-r from-[#44b718] to-[#2ca012] text-white text-xs font-extrabold uppercase tracking-wider shadow-md shadow-lime-600/30 hover:brightness-105 active:scale-95 transition cursor-pointer flex items-center gap-2"
+            >
+              <Car className="w-4 h-4" />
+              <span>Book Your First Ride</span>
+            </button>
           </div>
         ) : (
           filteredRides.map((ride, idx) => (
@@ -120,73 +145,50 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToHome, onRebook
                         <CheckCircle2 className="w-2.5 h-2.5" /> {ride.status}
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      {ride.date} • {ride.time} • ID: {ride.id}
-                    </span>
+                    <span className="text-[11px] text-slate-400">{ride.date} • {ride.time}</span>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-lg font-black text-slate-900 block leading-tight">
+                  <span className="text-base font-extrabold text-slate-900 block">
                     PKR {ride.fare}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">Cash Paid</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-mono">{ride.id}</span>
                 </div>
               </div>
 
-              {/* Route Path */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-3.5 h-3.5 rounded-full bg-lime-500 border-2 border-white shadow-sm mt-0.5 shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-xs font-bold text-slate-800 block">{ride.from}</span>
-                    <span className="text-[10px] text-slate-400">Pickup Location</span>
-                  </div>
+              {/* Middle Row: Route (From -> To) */}
+              <div className="space-y-2 mb-4 bg-slate-50/60 p-3 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 rounded-full bg-lime-500 shrink-0" />
+                  <span className="text-slate-400 text-[11px]">From:</span>
+                  <span className="font-bold text-slate-800 truncate">{ride.from}</span>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white shadow-sm mt-0.5 shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-xs font-bold text-slate-800 block">{ride.to}</span>
-                    <span className="text-[10px] text-slate-400">Drop-off Destination</span>
-                  </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                  <span className="text-slate-400 text-[11px]">To:</span>
+                  <span className="font-bold text-slate-800 truncate">{ride.to}</span>
                 </div>
               </div>
 
-              {/* Driver & Details Row */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-4 rounded-b-3xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
-                    {ride.driverName.split(' ')[0][0]}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 block leading-tight">
-                      {ride.driverName}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      {ride.driverVehicle} • ⭐ {ride.rating}.0
-                    </span>
-                  </div>
-                </div>
-
+              {/* Bottom Row: Driver & Rebook */}
+              <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      alert(`Receipt for ${ride.id} downloaded successfully! Total: PKR ${ride.fare}`);
-                    }}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Receipt
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (onRebookRide) onRebookRide(ride);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-lime-500 text-slate-950 text-xs font-extrabold hover:bg-lime-400 flex items-center gap-1.5 shadow-sm transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" /> Re-book
-                  </button>
+                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                    {ride.driverName.charAt(0)}
+                  </div>
+                  <span className="text-xs text-slate-600 font-medium">Captain {ride.driverName}</span>
                 </div>
+
+                {onRebookRide && (
+                  <button
+                    onClick={() => onRebookRide(ride)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50 text-lime-700 hover:bg-lime-100 text-xs font-bold border border-lime-200/60 transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Rebook</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           ))

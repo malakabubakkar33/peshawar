@@ -124,11 +124,20 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
 
   // Driver Status (Online / Offline)
   const [isOnline, setIsOnline] = useState(true);
-  const [todayEarnings, setTodayEarnings] = useState(2450);
-  const [weeklyEarnings] = useState(18450);
-  const [completedCount, setCompletedCount] = useState(12);
-  const [cancelledCount] = useState(1);
-  const [totalDistance] = useState(86);
+  const [todayEarnings, setTodayEarnings] = useState(() => {
+    const saved = localStorage.getItem(`safargo_driver_earnings_${user?.id || 'default'}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [weeklyEarnings] = useState(() => {
+    const saved = localStorage.getItem(`safargo_driver_weekly_${user?.id || 'default'}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [completedCount, setCompletedCount] = useState(() => {
+    const saved = localStorage.getItem(`safargo_driver_completed_${user?.id || 'default'}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [cancelledCount] = useState(0);
+  const [totalDistance] = useState(0);
 
   // Animated Numbers
   const animCompleted = useAnimatedNumber(completedCount, 700);
