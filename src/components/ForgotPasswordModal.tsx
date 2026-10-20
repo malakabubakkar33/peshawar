@@ -5,7 +5,6 @@ import {
   ArrowRight, ArrowLeft, RefreshCw, Eye, EyeOff 
 } from 'lucide-react';
 import { userStorage } from '../lib/supabase';
-import { emitOtpNotification } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
 import { sendVerificationOtpEmail } from '../lib/emailService';
 import { TopErrorToast } from './TopErrorToast';
@@ -54,26 +53,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     return () => clearInterval(interval);
   }, [step, timerSeconds]);
 
-  // Listen for auto-fill from OTP banner
-  useEffect(() => {
-    const handleOtpReceived = (e: Event) => {
-      const customEvent = e as CustomEvent<{ code: string }>;
-      if (customEvent.detail && customEvent.detail.code && step === 2) {
-        const codeStr = customEvent.detail.code;
-        const chars = codeStr.split('').slice(0, 6);
-        setOtp(chars);
-        setErrorMsg(null);
-      }
-    };
-
-    window.addEventListener('safargo-otp-received', handleOtpReceived);
-    return () => window.removeEventListener('safargo-otp-received', handleOtpReceived);
-  }, [step]);
-
   if (!isOpen) return null;
 
   // Step 1: Submit Email & Generate Real OTP
-  const handleRequestOtp = (e: React.FormEvent) => {
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     sound.playClick();
     setErrorMsg(null);
@@ -100,26 +83,32 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
     // Send real email via Resend API
     if (user.email && user.email.includes('@')) {
-      sendVerificationOtpEmail(user.email, realCode, user.fullName || 'SafarGo Traveler').catch((err) => {
-        console.warn('Resend password reset email notification:', err);
-      });
+      try {
+        const sendRes = await sendVerificationOtpEmail(user.email, realCode, user.fullName || 'SafarGo Traveler');
+        if (!sendRes.success) {
+          setIsLoading(false);
+          setErrorMsg(sendRes.error || 'Failed to dispatch email. Please check your email.');
+          sound.playError();
+          return;
+        }
+      } catch (err: any) {
+        setIsLoading(false);
+        setErrorMsg(err?.message || 'Failed to dispatch email.');
+        sound.playError();
+        return;
+      }
     }
 
+    setIsLoading(false);
+    setStep(2);
+    setTimerSeconds(30);
+    setCanResend(false);
+    sound.playSuccess();
+
+    // Focus first OTP input
     setTimeout(() => {
-      setIsLoading(false);
-      // Dispatch real OTP notification event to user
-      emitOtpNotification(cleanInput, realCode);
-
-      setStep(2);
-      setTimerSeconds(30);
-      setCanResend(false);
-      sound.playSuccess();
-
-      // Focus first OTP input
-      setTimeout(() => {
-        otpInputsRef.current[0]?.focus();
-      }, 150);
-    }, 700);
+      otpInputsRef.current[0]?.focus();
+    }, 150);
 
   };
 
@@ -155,7 +144,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   // Resend OTP
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (!canResend) return;
     sound.playClick();
     const newCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -164,12 +153,14 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setTimerSeconds(30);
     setCanResend(false);
     setErrorMsg(null);
-    emitOtpNotification(email, newCode);
 
     if (email && email.includes('@')) {
-      sendVerificationOtpEmail(email, newCode, 'SafarGo Traveler').catch((err) => {
-        console.warn('Resend OTP error:', err);
-      });
+      const res = await sendVerificationOtpEmail(email, newCode, 'SafarGo Traveler');
+      if (!res.success) {
+        setErrorMsg(res.error || 'Failed to resend code to email.');
+        sound.playError();
+        return;
+      }
     }
 
     sound.playSuccess();
@@ -190,7 +181,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     }
 
     if (enteredCode !== generatedOtp) {
-      setErrorMsg('Invalid verification code. Please check the real code dispatched to your notification or resend.');
+      setErrorMsg('Invalid verification code. Please check your Gmail inbox and spam folder.');
       sound.playError();
       return;
     }

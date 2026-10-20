@@ -11,7 +11,6 @@ import { DriverPanel } from './components/DriverPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { SplashScreen } from './components/SplashScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
-import { OtpNotificationBanner } from './components/OtpNotificationBanner';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { userStorage, type UserAccount } from './lib/supabase';
@@ -213,8 +212,6 @@ export function App() {
 
   return (
     <div className={`min-h-screen w-full relative flex items-center justify-center selection:bg-lime-300 selection:text-slate-900 font-sans ${isAuthView ? 'bg-[#fafdf8]' : currentView === 'admin-panel' ? 'bg-slate-950' : currentView === 'dashboard' ? 'bg-slate-900' : 'mesh-bg'}`}>
-      {/* Real Inbound OTP Notification Toast Listener */}
-      <OtpNotificationBanner />
 
       {/* Background Animated Glowing Ambient Orbs for non-auth, non-dashboard, non-admin views */}
       {!isAuthView && currentView !== 'dashboard' && currentView !== 'admin-panel' && (
@@ -395,8 +392,6 @@ export function App() {
         }}
       />
 
-      {/* Real In-App Security OTP Floating Banner */}
-      <OtpNotificationBanner />
 
       {/* PWA Offline Network Detection Toast */}
       <OfflineIndicator />

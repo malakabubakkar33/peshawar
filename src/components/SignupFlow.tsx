@@ -164,10 +164,10 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
       setIsCheckingUnique(false);
       setIsSendingOtp(false);
 
-      if (!sendRes.success && sendRes.error) {
-        showTimedError(sendRes.error);
+      if (!sendRes.success) {
+        showTimedError(sendRes.error || 'Failed to send verification email. Please check your email address.');
         sound.playError();
-        // Still proceed to OTP screen with generated code so user isn't stuck
+        return;
       }
 
       setOtpDispatchedEmail(email);
@@ -181,10 +181,11 @@ export const SignupFlow: React.FC<SignupFlowProps> = ({
         otpInputRefs.current[0]?.focus();
       }, 200);
 
-    } catch (err) {
+    } catch (err: any) {
       setIsCheckingUnique(false);
       setIsSendingOtp(false);
-      setCurrentStep('otp');
+      showTimedError(err?.message || 'Network error while sending verification email.');
+      sound.playError();
     }
   };
 

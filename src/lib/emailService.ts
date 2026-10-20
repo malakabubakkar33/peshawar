@@ -1,7 +1,6 @@
 // Email Service for SafarGo Peshawar using Resend API
 // Sends real verification OTP emails to user's Gmail/Email address
 
-import { emitOtpNotification } from './peshawarData';
 
 export interface SendOtpResult {
   success: boolean;
@@ -113,18 +112,15 @@ export async function sendVerificationOtpEmail(
     expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
   }));
 
-  // Immediately dispatch in-app notification banner so user is NEVER blocked
-  emitOtpNotification(cleanEmail, otpCode);
-
   if (!apiKey) {
     console.warn(
       '⚠️ Resend API Key is not set in VITE_RESEND_API_KEY. ' +
       'To send real emails to your inbox, add VITE_RESEND_API_KEY to your .env file.'
     );
     return {
-      success: true,
+      success: false,
       code: otpCode,
-      messageId: `dev-local-${Date.now()}`
+      error: 'Resend API Key is missing. Please configure VITE_RESEND_API_KEY in your .env file.'
     };
   }
 
@@ -148,9 +144,13 @@ export async function sendVerificationOtpEmail(
 
     if (!response.ok) {
       console.warn('Resend API response warning:', data);
+      let errMsg = data.message || 'Failed to send email via Resend';
+      if (data.message && data.message.includes('own email address')) {
+        errMsg = `Resend Free tier allows sending emails only to your registered account (${data.message.match(/\((.*?)\)/)?.[1] || 'malikabubakkar523@gmail.com'}). To send to any Gmail address, verify your domain in resend.com/domains.`;
+      }
       return {
         success: false,
-        error: data.message || 'Failed to send email via Resend',
+        error: errMsg,
         code: otpCode
       };
     }
