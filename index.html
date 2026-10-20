@@ -37,12 +37,24 @@
     <meta property="twitter:description" content="Fast, reliable bike taxi, car rides, and cargo delivery in Peshawar." />
     <meta property="twitter:image" content="/safar-go-monogram-exact.png" />
 
-    <!-- Mobile Web App & Theme Color -->
-    <meta name="theme-color" content="#3ebd19" />
-    <meta name="msapplication-navbutton-color" content="#3ebd19" />
+    <!-- PWA Manifest & App Icons -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/safar-go-monogram-exact.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#16a34a" />
+
+    <!-- Mobile Web App & PWA Status Bar -->
+    <meta name="theme-color" content="#16a34a" />
+    <meta name="msapplication-TileColor" content="#16a34a" />
+    <meta name="msapplication-navbutton-color" content="#16a34a" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SafarGo" />
+    <meta name="application-name" content="SafarGo" />
     <meta name="format-detection" content="telephone=no" />
+
 
     <!-- Fast Preconnect for Google Fonts & Leaflet Tiles -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

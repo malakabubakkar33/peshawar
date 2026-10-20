@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import 'leaflet/dist/leaflet.css'
 import App from './App.tsx'
+import { registerServiceWorker } from './lib/pwa'
+
+// Register Progressive Web App Service Worker
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

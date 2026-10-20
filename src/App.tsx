@@ -12,6 +12,8 @@ import { AdminPanel } from './components/AdminPanel';
 import { SplashScreen } from './components/SplashScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { OtpNotificationBanner } from './components/OtpNotificationBanner';
+import { PwaInstallBanner } from './components/PwaInstallBanner';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { userStorage, type UserAccount } from './lib/supabase';
 
 export function App() {
@@ -392,6 +394,12 @@ export function App() {
           setCurrentView('login');
         }}
       />
+
+      {/* PWA Offline Network Detection Toast */}
+      <OfflineIndicator />
+
+      {/* PWA Add to Home Screen Glassmorphic Banner */}
+      <PwaInstallBanner />
 
       {/* Real In-App Push Notification Floating Banner */}
       <AnimatePresence>

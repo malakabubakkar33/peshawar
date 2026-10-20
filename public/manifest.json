@@ -1,0 +1,65 @@
+{
+  "id": "/",
+  "name": "SafarGo Peshawar — Smart Rides & Delivery",
+  "short_name": "SafarGo",
+  "description": "Peshawar's premier ride-hailing and urban mobility platform. Book Bikes, Cars, and Cargo in Peshawar.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["transportation", "travel", "navigation"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/safar-go-monogram-exact.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book Ride",
+      "short_name": "Book",
+      "description": "Quickly book a bike or car ride in Peshawar",
+      "url": "/?action=book",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Trip History",
+      "short_name": "History",
+      "description": "View recent trips and ride receipts",
+      "url": "/?page=history",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "SafarGo Wallet",
+      "short_name": "Wallet",
+      "description": "Check balance and reload EasyPaisa or JazzCash",
+      "url": "/?page=wallet",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
