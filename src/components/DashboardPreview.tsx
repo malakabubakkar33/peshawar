@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, ArrowRight, Search, MapPin, 
   Phone, MessageCircle, Check, X, Clock, Wallet, 
-  Bell, Shield, LogOut, Compass, ChevronRight, Navigation, ShieldCheck,
-  Car, Home
+  Bell, Shield, LogOut, ChevronRight, Navigation, ShieldCheck,
+  Car, Home, User as UserIcon, Settings, HelpCircle, 
+  AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { type UserAccount } from '../lib/supabase';
@@ -19,8 +20,20 @@ import { HistoryPage } from './HistoryPage';
 import { WalletPage } from './WalletPage';
 import { NotificationPage } from './NotificationPage';
 import { SearchPage } from './SearchPage';
-import { ProfilePage } from './ProfilePage';
 import { DriverChatModal, DriverCallModal } from './DriverChatModal';
+import { PersonalInfoPage } from './account/PersonalInfoPage';
+import { SecurityPrivacyPage } from './account/SecurityPrivacyPage';
+import { AppSettingsPage } from './account/AppSettingsPage';
+import { NotificationPreferencesPage } from './account/NotificationPreferencesPage';
+import { SavedPlacesPage } from './account/SavedPlacesPage';
+import { OffersRewardsPage } from './account/OffersRewardsPage';
+import { SafetyCenterPage } from './account/SafetyCenterPage';
+import { HelpSupportPage } from './account/HelpSupportPage';
+import { ReportIssuePage } from './account/ReportIssuePage';
+import { AboutSafarGoPage } from './account/AboutSafarGoPage';
+import { TermsConditionsPage } from './account/TermsConditionsPage';
+import { PrivacyPolicyPage } from './account/PrivacyPolicyPage';
+import { AppVersionPage } from './account/AppVersionPage';
 
 interface DashboardProps {
   user: UserAccount;
@@ -40,7 +53,26 @@ type ScreenState =
   | 'ride_in_progress'  // Screen 7: Ride in Progress
   | 'ride_completed';   // Screen 8: Ride Complete & Receipt
 
-type ActivePage = 'home' | 'search' | 'wallet' | 'notifications' | 'history' | 'profile';
+type ActivePage = 
+  | 'home' 
+  | 'search' 
+  | 'wallet' 
+  | 'notifications' 
+  | 'history' 
+  | 'profile'
+  | 'personal_info'
+  | 'security_privacy'
+  | 'app_settings'
+  | 'notification_preferences'
+  | 'saved_places'
+  | 'offers_rewards'
+  | 'safety_center'
+  | 'help_support'
+  | 'report_issue'
+  | 'about'
+  | 'terms'
+  | 'privacy'
+  | 'app_version';
 
 export const DashboardPreview: React.FC<DashboardProps> = ({ 
   user, 
@@ -51,6 +83,18 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
 }) => {
   // Active Main Page
   const [activePage, setActivePage] = useState<ActivePage>('home');
+
+  // Authenticated Passenger State
+  const [currentUser, setCurrentUser] = useState<UserAccount>(user);
+  useEffect(() => {
+    setCurrentUser(user);
+  }, [user]);
+
+  // Logout Confirmation Modal
+  const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
+
+  // Issue Dispute Ride ID
+  const [disputedRideId, setDisputedRideId] = useState<string | undefined>();
 
   // 8-step Ride Booking state (active when on 'home' page)
   const [currentScreen, setCurrentScreen] = useState<ScreenState>('home');
@@ -266,13 +310,19 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       {/* 2. MAIN VIEW SWITCHER (HOME, HISTORY, WALLET, NOTIFS)   */}
       {/* ======================================================== */}
       <main className="flex-1 w-full relative">
+        {/* 1. Trip History & Receipts */}
         {activePage === 'history' && (
           <HistoryPage 
             onBackToHome={() => setActivePage('home')} 
             onRebookRide={handleRebookFromHistory}
+            onReportRideIssue={(rideId) => {
+              setDisputedRideId(rideId);
+              setActivePage('report_issue');
+            }}
           />
         )}
 
+        {/* 2. Search Page */}
         {activePage === 'search' && (
           <SearchPage
             fromPlace={fromPlace}
@@ -289,25 +339,128 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
           />
         )}
 
-        {activePage === 'profile' && (
-          <ProfilePage
-            user={user}
-            onBackToHome={() => setActivePage('home')}
-            onNavigateToHistory={() => setActivePage('history')}
-            onNavigateToWallet={() => setActivePage('wallet')}
-            onNavigateToNotifications={() => setActivePage('notifications')}
-            onSwitchToDriver={handleSwitchToDriver}
+        {/* 3. Personal Information / Profile Page */}
+        {(activePage === 'personal_info' || activePage === 'profile') && (
+          <PersonalInfoPage
+            user={currentUser}
+            onBack={() => setActivePage('home')}
+            onUserUpdated={(updated) => setCurrentUser(updated)}
             onOpenAdminPanel={onOpenAdminPanel}
-            onLogout={onLogout}
           />
         )}
 
+        {/* 4. Security & Privacy */}
+        {activePage === 'security_privacy' && (
+          <SecurityPrivacyPage
+            user={currentUser}
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* 5. App Settings */}
+        {activePage === 'app_settings' && (
+          <AppSettingsPage
+            onBack={() => setActivePage('home')}
+            onNavigateToNotifications={() => setActivePage('notification_preferences')}
+            onNavigateToAppVersion={() => setActivePage('app_version')}
+          />
+        )}
+
+        {/* 6. Notification Preferences */}
+        {activePage === 'notification_preferences' && (
+          <NotificationPreferencesPage
+            userId={currentUser.id}
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* 7. SafarGo Cash Wallet */}
         {activePage === 'wallet' && (
           <WalletPage 
             onBackToHome={() => setActivePage('home')} 
           />
         )}
 
+        {/* 8. Saved Places */}
+        {activePage === 'saved_places' && (
+          <SavedPlacesPage
+            userId={currentUser.id}
+            onBack={() => setActivePage('home')}
+            onSelectForTrip={(place) => {
+              setToPlace(place);
+              setActivePage('home');
+              setCurrentScreen('categories');
+            }}
+          />
+        )}
+
+        {/* 9. Offers & Referral Rewards */}
+        {activePage === 'offers_rewards' && (
+          <OffersRewardsPage
+            user={currentUser}
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* 10. Safety Center */}
+        {activePage === 'safety_center' && (
+          <SafetyCenterPage
+            userId={currentUser.id}
+            onBack={() => setActivePage('home')}
+            onReportSafetyConcern={() => setActivePage('report_issue')}
+          />
+        )}
+
+        {/* 11. Help & Support */}
+        {activePage === 'help_support' && (
+          <HelpSupportPage
+            userId={currentUser.id}
+            onBack={() => setActivePage('home')}
+            onNavigateToReportIssue={() => setActivePage('report_issue')}
+          />
+        )}
+
+        {/* 12. Report an Issue */}
+        {activePage === 'report_issue' && (
+          <ReportIssuePage
+            userId={currentUser.id}
+            initialRideId={disputedRideId}
+            onBack={() => setActivePage('home')}
+            onTicketSubmitted={() => setActivePage('help_support')}
+          />
+        )}
+
+        {/* 13. About SafarGo */}
+        {activePage === 'about' && (
+          <AboutSafarGoPage
+            onBack={() => setActivePage('home')}
+            onNavigateToTerms={() => setActivePage('terms')}
+            onNavigateToPrivacy={() => setActivePage('privacy')}
+          />
+        )}
+
+        {/* 14. Terms & Conditions */}
+        {activePage === 'terms' && (
+          <TermsConditionsPage
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* 15. Privacy Policy */}
+        {activePage === 'privacy' && (
+          <PrivacyPolicyPage
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* 16. App Version */}
+        {activePage === 'app_version' && (
+          <AppVersionPage
+            onBack={() => setActivePage('home')}
+          />
+        )}
+
+        {/* Notifications Page (from Header/BottomNav) */}
         {activePage === 'notifications' && (
           <NotificationPage 
             onBackToHome={() => setActivePage('home')}
@@ -892,24 +1045,23 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
             )}
           </button>
 
-          {/* 5. Notifications Tab */}
+          {/* 5. Switch to Driver Mode */}
           <button
             onClick={() => {
-              setActivePage('notifications');
-              sound.playPop();
+              handleSwitchToDriver();
             }}
-            className="flex flex-col items-center gap-1 py-1 w-16 relative transition-colors group active:scale-95"
+            title="Switch to Driver Mode"
+            className="flex flex-col items-center gap-1 py-1 w-16 transition-colors group active:scale-95"
           >
             <div className="relative">
-              <Bell className={`w-6 h-6 transition-colors ${activePage === 'notifications' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`} />
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#ef4444] ring-2 ring-white"></span>
+              <Car className="w-6 h-6 text-slate-400 group-hover:text-[#16a34a] transition-colors" />
+              <span className="absolute -top-1 -right-2 px-1 py-0.2 rounded-full bg-emerald-100 text-[#16a34a] text-[8px] font-black border border-emerald-200">
+                DRV
+              </span>
             </div>
-            <span className={`text-[11px] font-bold tracking-tight transition-colors ${activePage === 'notifications' ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'}`}>
-              Notifications
+            <span className="text-[11px] font-bold tracking-tight text-slate-400 group-hover:text-[#16a34a] transition-colors">
+              Driver
             </span>
-            {activePage === 'notifications' && (
-              <span className="w-6 h-1 rounded-full bg-[#16a34a] -mt-0.5"></span>
-            )}
           </button>
         </div>
       </nav>
@@ -918,6 +1070,9 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
 
       {/* ======================================================== */}
       {/* 5. SLIDING SIDE NAVIGATION DRAWER (OPENS FROM RIGHT)    */}
+      {/* ======================================================== */}
+      {/* ======================================================== */}
+      {/* 5. SLIDING SIDE NAVIGATION DRAWER (4 SECTIONS & LOGOUT) */}
       {/* ======================================================== */}
       <AnimatePresence>
         {isNavDrawerOpen && (
@@ -931,143 +1086,220 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
 
-            {/* Sliding Panel from Right */}
+            {/* Sliding Drawer Panel from Right */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-80 max-w-[85vw] h-full bg-white shadow-2xl p-6 flex flex-col justify-between z-10"
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="relative w-84 max-w-[88vw] h-full bg-[#fafdf8] shadow-2xl flex flex-col justify-between z-10 border-l border-emerald-100"
             >
-              <div className="space-y-6">
-                {/* User Profile Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              {/* A. Passenger Account Header */}
+              <div className="p-5 pb-4 bg-white border-b border-slate-100 shrink-0">
+                <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-200 border-2 border-lime-400">
-                      <img
-                        src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                        alt={user.fullName}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">
-                        {user.fullName || 'Muhammad Abubakar'}
-                      </h3>
-                      <p className="text-xs text-slate-500">{user.email || 'user@safargo.pk'}</p>
-                      <span className="text-[10px] font-bold text-lime-700 bg-lime-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-lime-200">
-                        Passenger Account
+                    <div className="relative">
+                      <div className="w-13 h-13 rounded-2xl overflow-hidden bg-emerald-50 border-2 border-[#16a34a] shadow-sm">
+                        {currentUser.avatarUrl ? (
+                          <img
+                            src={currentUser.avatarUrl}
+                            alt={currentUser.fullName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-[#16a34a] font-black text-lg">
+                            {(currentUser.fullName || 'P').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#16a34a] border-2 border-white flex items-center justify-center text-white text-[9px] font-bold">
+                        ✓
                       </span>
                     </div>
+
+                    <div className="space-y-0.5">
+                      <h3 className="text-sm font-black text-slate-900 leading-tight">
+                        {currentUser.fullName || 'Passenger'}
+                      </h3>
+                      <p className="text-xs text-slate-500 truncate max-w-[145px]">
+                        {currentUser.email || currentUser.phone || 'Verified Passenger'}
+                      </p>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-[10px] font-bold text-[#16a34a] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Passenger Account
+                        </span>
+                      </div>
+                    </div>
                   </div>
+
                   <button
                     onClick={() => setIsNavDrawerOpen(false)}
-                    className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900"
+                    aria-label="Close Drawer"
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors active:scale-95"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                {/* Switch to Driver Mode Action Button */}
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl border border-lime-400/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-lime-400 flex items-center gap-1.5">
-                      <Car className="w-3.5 h-3.5" />
-                      Driver Mode
-                    </span>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-lime-400/20 text-lime-300 font-extrabold border border-lime-400/30">
-                      Earn in Peshawar
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300">
-                    Switch to driver panel or register your bike / car to start earning.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setIsNavDrawerOpen(false);
-                      handleSwitchToDriver();
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-lime-400 to-emerald-500 text-slate-950 font-black text-xs shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>Switch to Driver Mode</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Navigation Links */}
-                <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      setActivePage('home');
-                      setIsNavDrawerOpen(false);
-                    }}
-                    className="w-full p-3 rounded-2xl flex items-center gap-3 text-slate-700 hover:bg-slate-50 text-xs font-bold"
-                  >
-                    <Compass className="w-4 h-4 text-lime-600" />
-                    <span>Home / Live Peshawar Map</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActivePage('history');
-                      setIsNavDrawerOpen(false);
-                    }}
-                    className="w-full p-3 rounded-2xl flex items-center gap-3 text-slate-700 hover:bg-slate-50 text-xs font-bold"
-                  >
-                    <Clock className="w-4 h-4 text-emerald-600" />
-                    <span>Trip History & Receipts</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActivePage('wallet');
-                      setIsNavDrawerOpen(false);
-                    }}
-                    className="w-full p-3 rounded-2xl flex items-center gap-3 text-slate-700 hover:bg-slate-50 text-xs font-bold"
-                  >
-                    <Wallet className="w-4 h-4 text-amber-600" />
-                    <span>SafarGo Cash Wallet</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActivePage('notifications');
-                      setIsNavDrawerOpen(false);
-                    }}
-                    className="w-full p-3 rounded-2xl flex items-center gap-3 text-slate-700 hover:bg-slate-50 text-xs font-bold"
-                  >
-                    <Bell className="w-4 h-4 text-indigo-600" />
-                    <span>Notifications & Promos</span>
-                  </button>
-                </div>
-
-                {/* Emergency Helplines (Peshawar) */}
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs space-y-2">
-                  <span className="font-extrabold text-rose-800 flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-rose-600" /> Peshawar Emergency
+                {/* Edit Profile Action */}
+                <button
+                  onClick={() => {
+                    setIsNavDrawerOpen(false);
+                    setActivePage('personal_info');
+                    sound.playPop();
+                  }}
+                  className="mt-3 w-full py-2 px-3 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200 text-[#16a34a] text-xs font-bold flex items-center justify-between transition-colors active:scale-[0.99]"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <UserIcon className="w-3.5 h-3.5" />
+                    Edit Profile & Details
                   </span>
-                  <div className="flex justify-between text-slate-700 pt-1">
-                    <span>Police Emergency:</span>
-                    <a href="tel:15" className="font-bold text-rose-700">15</a>
-                  </div>
-                  <div className="flex justify-between text-slate-700">
-                    <span>Rescue 1122:</span>
-                    <a href="tel:1122" className="font-bold text-rose-700">1122</a>
-                  </div>
-                </div>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Logout Button */}
-              <button
-                onClick={() => {
-                  setIsNavDrawerOpen(false);
-                  onLogout();
-                }}
-                className="w-full py-3 rounded-2xl border border-rose-200 bg-rose-50/50 text-rose-600 font-bold text-xs hover:bg-rose-100 flex items-center justify-center gap-2 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Log Out</span>
-              </button>
+              {/* B, C, D, E. Scrollable Four Sections */}
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5 no-scrollbar">
+                {[
+                  {
+                    title: 'ACCOUNT',
+                    items: [
+                      { id: 'personal_info' as ActivePage, label: 'Personal Information', sub: 'Profile, phone & email', icon: UserIcon },
+                      { id: 'security_privacy' as ActivePage, label: 'Security & Privacy', sub: 'Password & active devices', icon: Lock },
+                      { id: 'app_settings' as ActivePage, label: 'App Settings', sub: 'Language, audio & map style', icon: Settings },
+                      { id: 'notification_preferences' as ActivePage, label: 'Notification Preferences', sub: 'Ride alerts & updates', icon: Bell },
+                    ]
+                  },
+                  {
+                    title: 'RIDES & PAYMENTS',
+                    items: [
+                      { id: 'history' as ActivePage, label: 'Trip History & Receipts', sub: 'Past rides & fare breakdown', icon: Clock },
+                      { id: 'wallet' as ActivePage, label: 'SafarGo Cash Wallet', sub: 'EasyPaisa & JazzCash', icon: Wallet },
+                      { id: 'saved_places' as ActivePage, label: 'Saved Places', sub: 'Home, Work & Favorites', icon: MapPin },
+                      { id: 'offers_rewards' as ActivePage, label: 'Offers & Referral Rewards', sub: 'Promo vouchers & referral code', icon: Tag },
+                    ]
+                  },
+                  {
+                    title: 'SAFETY & SUPPORT',
+                    items: [
+                      { id: 'safety_center' as ActivePage, label: 'Safety Center', sub: 'Peshawar 15, 1122 & SOS', icon: ShieldCheck },
+                      { id: 'help_support' as ActivePage, label: 'Help & Support', sub: 'FAQs & support tickets', icon: HelpCircle },
+                      { id: 'report_issue' as ActivePage, label: 'Report an Issue', sub: 'Submit a dispute or feedback', icon: AlertCircle },
+                    ]
+                  },
+                  {
+                    title: 'SAFARGO INFORMATION',
+                    items: [
+                      { id: 'about' as ActivePage, label: 'About SafarGo', sub: 'Peshawar ride-hailing vision', icon: Sparkles },
+                      { id: 'terms' as ActivePage, label: 'Terms & Conditions', sub: 'Passenger service agreement', icon: FileText },
+                      { id: 'privacy' as ActivePage, label: 'Privacy Policy', sub: 'Data & location privacy', icon: Shield },
+                      { id: 'app_version' as ActivePage, label: 'App Version', sub: 'v2.4.0 (Build 2026.10)', icon: Smartphone },
+                    ]
+                  }
+                ].map((section, sIdx) => (
+                  <div key={sIdx} className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block px-2">
+                      {section.title}
+                    </span>
+                    <div className="space-y-1">
+                      {section.items.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            sound.playPop();
+                            setIsNavDrawerOpen(false);
+                            setActivePage(item.id);
+                          }}
+                          className={`w-full p-2.5 rounded-2xl flex items-center justify-between transition-all group active:scale-[0.99] ${
+                            activePage === item.id 
+                              ? 'bg-emerald-50 text-[#16a34a] font-bold border border-emerald-200/80 shadow-xs' 
+                              : 'text-slate-700 hover:bg-white hover:shadow-xs border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
+                              activePage === item.id 
+                                ? 'bg-[#16a34a] text-white' 
+                                : 'bg-slate-100 text-slate-600 group-hover:bg-emerald-50 group-hover:text-[#16a34a]'
+                            }`}>
+                              <item.icon className="w-4 h-4" />
+                            </div>
+                            <div className="text-left">
+                              <div className={`text-xs font-bold leading-tight ${activePage === item.id ? 'text-[#16a34a]' : 'text-slate-900'}`}>
+                                {item.label}
+                              </div>
+                              <div className="text-[10px] text-slate-600 leading-tight mt-0.5">
+                                {item.sub}
+                              </div>
+                            </div>
+                          </div>
+
+                          <ChevronRight className={`w-3.5 h-3.5 transition-colors shrink-0 ${
+                            activePage === item.id ? 'text-[#16a34a]' : 'text-slate-400 group-hover:text-slate-600'
+                          }`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* F. Logout Button */}
+              <div className="p-4 bg-white border-t border-slate-100 shrink-0">
+                <button
+                  onClick={() => {
+                    sound.playPop();
+                    setShowLogoutConfirmModal(true);
+                  }}
+                  className="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xs"
+                >
+                  <LogOut className="w-4 h-4 text-rose-600" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4"
+            >
+              <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center shadow-inner">
+                <LogOut className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-900">Log Out of SafarGo?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Are you sure you want to log out? You will need to sign in again to book rides across Peshawar.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => setShowLogoutConfirmModal(false)}
+                  className="py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirmModal(false);
+                    setIsNavDrawerOpen(false);
+                    sound.playPop();
+                    onLogout();
+                  }}
+                  className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 active:scale-95 transition-all"
+                >
+                  Yes, Log Out
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
