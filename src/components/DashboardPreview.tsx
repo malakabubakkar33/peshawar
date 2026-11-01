@@ -38,11 +38,13 @@ import { AboutSafarGoPage } from './account/AboutSafarGoPage';
 import { TermsConditionsPage } from './account/TermsConditionsPage';
 import { PrivacyPolicyPage } from './account/PrivacyPolicyPage';
 import { AppVersionPage } from './account/AppVersionPage';
+import { adminManager } from '../lib/adminData';
 
 interface DashboardProps {
   user: UserAccount;
   onLogout: () => void;
   onOpenDriverApplication?: () => void;
+  onOpenDriverPending?: () => void;
   onOpenDriverPanel?: () => void;
   onOpenAdminPanel?: () => void;
 }
@@ -82,6 +84,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   user, 
   onLogout,
   onOpenDriverApplication,
+  onOpenDriverPending,
   onOpenDriverPanel,
   onOpenAdminPanel
 }) => {
@@ -140,19 +143,42 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   const [isCustomPinMode, setIsCustomPinMode] = useState(false);
   const [pinModeType] = useState<'from' | 'to'>('from');
 
-  // Switch to Driver Mode Handler
+  // Switch to Driver Mode Handler (Admin approval strictly enforced!)
   const handleSwitchToDriver = () => {
-    const isRegisteredDriver = 
-      user.role === 'driver' || 
-      localStorage.getItem(`safargo_driver_registered_${user.id}`) === 'true' ||
-      Boolean(localStorage.getItem(`safargo_driver_data_${user.id}`));
+    const driverRegStatus = localStorage.getItem(`safargo_driver_registered_${user.id}`);
+    const hasDriverData = Boolean(localStorage.getItem(`safargo_driver_data_${user.id}`));
+    
+    // Check real applications in admin database
+    const apps = adminManager.getDriverApplications();
+    const myApp = apps.find(a => 
+      (a.userId && a.userId === user.id) || 
+      (a.phone && a.phone === user.phone) || 
+      (a.email && a.email === user.email)
+    );
 
-    if (isRegisteredDriver) {
+    const isOfficiallyApproved = 
+      myApp ? myApp.status === 'approved' : driverRegStatus === 'true';
+
+    const isPendingApproval = 
+      (myApp && myApp.status === 'pending') || 
+      driverRegStatus === 'pending' || 
+      (!isOfficiallyApproved && hasDriverData);
+
+    if (isOfficiallyApproved) {
       sound.playSuccess();
       if (onOpenDriverPanel) {
         onOpenDriverPanel();
       }
+    } else if (isPendingApproval) {
+      // Application submitted but NOT approved yet -> show pending review screen
+      sound.playPop();
+      if (onOpenDriverPending) {
+        onOpenDriverPending();
+      } else if (onOpenDriverApplication) {
+        onOpenDriverApplication();
+      }
     } else {
+      // First time application
       sound.playClick();
       if (onOpenDriverApplication) {
         onOpenDriverApplication();

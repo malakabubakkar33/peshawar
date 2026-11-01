@@ -315,10 +315,12 @@ export const adminManager = {
 
       // Also ensure user role is updated in userStorage
       if (target.userId) {
+        localStorage.setItem(`safargo_driver_registered_${target.userId}`, 'true');
         userStorage.updateRole(target.userId, 'driver');
       } else {
         const found = userStorage.findUserByEmailOrPhone(target.phone) || userStorage.findUserByEmailOrPhone(target.email);
         if (found) {
+          localStorage.setItem(`safargo_driver_registered_${found.id}`, 'true');
           userStorage.updateRole(found.id, 'driver');
         }
       }
@@ -362,6 +364,10 @@ export const adminManager = {
       target.rejectionReason = reason;
       target.reviewedAt = new Date().toISOString();
       localStorage.setItem(DRIVER_APPS_KEY, JSON.stringify(apps));
+
+      if (target.userId) {
+        localStorage.setItem(`safargo_driver_registered_${target.userId}`, 'rejected');
+      }
 
       pushNotificationService.sendNotification({
         title: 'Driver Application Update',

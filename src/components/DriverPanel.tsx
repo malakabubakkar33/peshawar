@@ -233,26 +233,33 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
       return;
     }
 
+    // Check if a ride was already requested right before or during online toggle
+    const pendingRides = rideService.getPendingRides();
+    if (pendingRides.length > 0) {
+      setCurrentRealRide(pendingRides[0]);
+      setShowPushNotification(true);
+      setRequestCountdown(30);
+    }
+
     const unsubscribe = rideService.subscribeToIncomingRides((realRide) => {
-      const driverVehicleType = driverData?.vehicleType || 'car';
-      // Only notify if driver is online, not busy, and ride matches vehicle
-      if (
-        isOnline && 
-        activeSubScreen === 'none' && 
-        realRide.status === 'searching' &&
-        (!realRide.vehicleType || realRide.vehicleType === driverVehicleType || driverVehicleType === 'all')
-      ) {
+      if (!isOnline) return;
+
+      // Reliable real-time delivery to active driver
+      if (realRide.status === 'searching') {
         setCurrentRealRide(realRide);
         setShowPushNotification(true);
-        setRequestCountdown(25);
-        sound.playPop();
+        setRequestCountdown(30);
+        sound.playSuccess();
+      } else if (realRide.status === 'cancelled') {
+        setShowPushNotification(false);
+        setCurrentRealRide(null);
       }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [isOnline, activeSubScreen, driverData]);
+  }, [isOnline]);
 
   // Push Notification Countdown
   useEffect(() => {

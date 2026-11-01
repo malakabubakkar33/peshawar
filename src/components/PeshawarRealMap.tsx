@@ -32,8 +32,8 @@ function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number
   return (brng + 360) % 360;
 }
 
-// Generate realistic polyline points along Peshawar road network
-function generateRouteCoordinates(from: PeshawarPlace, to: PeshawarPlace): [number, number][] {
+// Generate realistic polyline points along Peshawar road network (fallback)
+function generateRouteCoordinates(from: { lat: number; lng: number }, to: { lat: number; lng: number }): [number, number][] {
   const steps = 24;
   const coords: [number, number][] = [];
   
@@ -47,6 +47,55 @@ function generateRouteCoordinates(from: PeshawarPlace, to: PeshawarPlace): [numb
     coords.push([lat, lng]);
   }
   return coords;
+}
+
+// In-Memory cache for OSRM real street routes
+const roadRouteCache = new Map<string, { coordinates: [number, number][]; distanceKm: string; durationMin: string }>();
+
+// Fetch 100% Real Road Navigation Route via OpenStreetMap / OSRM
+async function fetchPeshawarRoadRoute(
+  from: { lat: number; lng: number }, 
+  to: { lat: number; lng: number }
+): Promise<{ coordinates: [number, number][]; distanceKm: string; durationMin: string }> {
+  const cacheKey = `${from.lat.toFixed(4)},${from.lng.toFixed(4)}_${to.lat.toFixed(4)},${to.lng.toFixed(4)}`;
+  if (roadRouteCache.has(cacheKey)) {
+    return roadRouteCache.get(cacheKey)!;
+  }
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        // Convert [lng, lat] to Leaflet [lat, lng]
+        const coordinates: [number, number][] = route.geometry.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng]
+        );
+        const distanceKm = `${(route.distance / 1000).toFixed(1)} km`;
+        const durationMin = `${Math.max(1, Math.round(route.duration / 60))} min`;
+
+        const result = { coordinates, distanceKm, durationMin };
+        roadRouteCache.set(cacheKey, result);
+        return result;
+      }
+    }
+  } catch {
+    // fallback if offline
+  }
+
+  const fallback = generateRouteCoordinates(from, to);
+  const estKm = (Math.hypot(from.lat - to.lat, from.lng - to.lng) * 111 * 1.35).toFixed(1);
+  return {
+    coordinates: fallback,
+    distanceKm: `${estKm} km`,
+    durationMin: `${Math.max(3, Math.round(parseFloat(estKm) * 2.4))} min`
+  };
 }
 
 // Find closest Peshawar Landmark for custom pinned coordinate
@@ -136,12 +185,14 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     cityLabel?: L.Marker;
     landmarks: L.Marker[];
     routeLine?: L.Polyline;
+    routeCasing?: L.Polyline;
   }>({ landmarks: [] });
 
   // Animation and vehicle telemetry states
   const [vehicleSpeed, setVehicleSpeed] = useState(42);
   const [distanceRemaining, setDistanceRemaining] = useState('1.8 km');
   const [etaRemaining, setEtaRemaining] = useState('3 min');
+  const [realRouteCoords, setRealRouteCoords] = useState<[number, number][]>([]);
   const [selectedCity, setSelectedCity] = useState('Peshawar');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [mapLayerStyle, setMapLayerStyle] = useState<'streets' | 'osm' | 'satellite' | 'google'>('streets');
@@ -221,6 +272,36 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     layer.addTo(map);
     tileLayerRef.current = layer;
   };
+
+  // 1. Fetch Real Road Navigation Polyline via OSRM whenever locations change
+  useEffect(() => {
+    if (screenState === 'home') {
+      setRealRouteCoords([]);
+      return;
+    }
+
+    let isCurrent = true;
+    fetchPeshawarRoadRoute(fromPlace, toPlace).then((route) => {
+      if (!isCurrent) return;
+      setRealRouteCoords(route.coordinates);
+      setDistanceRemaining(route.distanceKm);
+      setEtaRemaining(route.durationMin);
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fromPlace.lat, fromPlace.lng, toPlace.lat, toPlace.lng, screenState]);
+
+  // 2. Continuous User Live Coordinates Update (Updates Blue Dot without resetting map zoom!)
+  useEffect(() => {
+    if (markersRef.current.centerUser) {
+      markersRef.current.centerUser.setLatLng(userLiveCoords);
+    }
+    if (markersRef.current.cityLabel) {
+      markersRef.current.cityLabel.setLatLng([userLiveCoords[0] + 0.003, userLiveCoords[1]]);
+    }
+  }, [userLiveCoords]);
 
   // Initialize Map Once with size guarantees and full zoom/drag capability
   useEffect(() => {
@@ -344,6 +425,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     if (markersRef.current.centerUser) markersRef.current.centerUser.remove();
     if (markersRef.current.cityLabel) markersRef.current.cityLabel.remove();
     if (markersRef.current.routeLine) markersRef.current.routeLine.remove();
+    if (markersRef.current.routeCasing) markersRef.current.routeCasing.remove();
     markersRef.current.landmarks.forEach(m => m.remove());
     markersRef.current.landmarks = [];
 
@@ -541,34 +623,45 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       }
       markersRef.current.to = toMarker;
 
-      // Route coordinates
-      const routeCoords = generateRouteCoordinates(fromPlace, toPlace);
-      const routeLine = L.polyline(routeCoords, {
+      // Route coordinates (Real Road Navigation from OSRM or smooth Peshawar road fallback)
+      const activeCoords: [number, number][] = realRouteCoords.length > 0
+        ? realRouteCoords
+        : generateRouteCoordinates(fromPlace, toPlace);
+
+      // Casing polyline (dark green contrast border like Google Maps)
+      const routeCasing = L.polyline(activeCoords, {
+        color: '#064e3b',
+        weight: 8,
+        opacity: 0.85,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map);
+      markersRef.current.routeCasing = routeCasing;
+
+      // Real road navigation polyline
+      const routeLine = L.polyline(activeCoords, {
         color: '#16a34a',
-        weight: 6,
-        opacity: 0.9,
+        weight: 5,
+        opacity: 1,
         lineCap: 'round',
         lineJoin: 'round',
         dashArray: screenState === 'request_sent' ? '8, 8' : undefined
       }).addTo(map);
       markersRef.current.routeLine = routeLine;
 
-      // Fit Bounds during active ride
-      const bounds = L.latLngBounds([
-        [fromPlace.lat, fromPlace.lng],
-        [toPlace.lat, toPlace.lng]
-      ]);
-      map.flyToBounds(bounds, {
-        padding: [90, 90],
-        maxZoom: 15,
-        duration: 1.2
+      // Smart framing: auto-fit bounds with bottom padding for UI sheets so From & To are both clearly visible
+      const bounds = L.latLngBounds(activeCoords);
+      map.fitBounds(bounds, {
+        paddingTopLeft: [70, 70],
+        paddingBottomRight: [70, 220],
+        maxZoom: 16
       });
     }
 
     // Driver Marker if accepted, tracking, arrived, or in trip
     const showDriver = ['driver_accepted', 'live_tracking', 'driver_arrived', 'ride_in_progress'].includes(screenState);
     if (showDriver) {
-      const routeCoords = generateRouteCoordinates(fromPlace, toPlace);
+      const activeCoords = realRouteCoords.length > 0 ? realRouteCoords : generateRouteCoordinates(fromPlace, toPlace);
       const vehicleEmoji = vehicleType === 'bike' ? '🏍️' : vehicleType === 'cargo' ? '🚚' : '🚗';
 
       const driverIcon = L.divIcon({
@@ -587,11 +680,11 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         iconAnchor: [22, 22]
       });
 
-      const driverMarker = L.marker(routeCoords[0], { icon: driverIcon }).addTo(map);
+      const driverMarker = L.marker(activeCoords[0], { icon: driverIcon }).addTo(map);
       markersRef.current.driver = driverMarker;
     }
 
-  }, [fromPlace, toPlace, screenState, vehicleType, isCustomPinMode, pinModeType, onSelectPlace, userLiveCoords]);
+  }, [fromPlace.id, fromPlace.lat, fromPlace.lng, toPlace.id, toPlace.lat, toPlace.lng, screenState, vehicleType, isCustomPinMode, pinModeType, onSelectPlace, realRouteCoords]);
 
   // Real-Time Animated Movement of Driver along Route
   useEffect(() => {
@@ -616,7 +709,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       markersRef.current.driver.setLatLng([fromPlace.lat, fromPlace.lng]);
       return;
     } else {
-      routeCoords = generateRouteCoordinates(fromPlace, toPlace);
+      routeCoords = realRouteCoords.length > 0 ? realRouteCoords : generateRouteCoordinates(fromPlace, toPlace);
     }
 
     let startTimestamp: number | null = null;
@@ -666,7 +759,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [screenState, fromPlace, toPlace]);
+  }, [screenState, fromPlace.id, fromPlace.lat, fromPlace.lng, toPlace.id, toPlace.lat, toPlace.lng, realRouteCoords]);
 
   // Controls Handlers
   const handleLocateMe = () => {

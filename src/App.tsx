@@ -15,6 +15,7 @@ import { OtpNotificationBanner } from './components/OtpNotificationBanner';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { userStorage, type UserAccount } from './lib/supabase';
+import { adminManager } from './lib/adminData';
 
 export function App() {
   // Splash Screen: Shows on app launch
@@ -72,10 +73,20 @@ export function App() {
       setCurrentUser(session);
       const activeMode = localStorage.getItem(`safargo_active_mode_${session.id}`);
       const isDriverRegistered = localStorage.getItem(`safargo_driver_registered_${session.id}`) === 'true';
+      const myApp = adminManager.getDriverApplications().find(a => 
+        (a.userId && a.userId === session.id) || 
+        (a.phone && a.phone === session.phone) ||
+        (a.email && a.email === session.email)
+      );
+      // Admin approval is strictly enforced: If an application is pending or not yet approved, driver panel is locked!
+      const isApproved = myApp ? myApp.status === 'approved' : isDriverRegistered;
+
       if (userStorage.isUserAdmin(session)) {
         setCurrentView('admin-panel');
-      } else if (activeMode === 'driver' || (session.role === 'driver' && activeMode !== 'passenger') || (isDriverRegistered && activeMode === 'driver')) {
+      } else if (activeMode === 'driver' && isApproved) {
         setCurrentView('driver-panel');
+      } else if (activeMode === 'driver' && !isApproved) {
+        setCurrentView('driver-pending');
       } else {
         setCurrentView('dashboard');
       }
@@ -132,10 +143,20 @@ export function App() {
     userStorage.setSession(user);
     const activeMode = localStorage.getItem(`safargo_active_mode_${user.id}`);
     const isDriverRegistered = localStorage.getItem(`safargo_driver_registered_${user.id}`) === 'true';
+    const myApp = adminManager.getDriverApplications().find(a => 
+      (a.userId && a.userId === user.id) || 
+      (a.phone && a.phone === user.phone) ||
+      (a.email && a.email === user.email)
+    );
+    // Admin approval strictly enforced
+    const isApproved = myApp ? myApp.status === 'approved' : isDriverRegistered;
+
     if (userStorage.isUserAdmin(user)) {
       setCurrentView('admin-panel');
-    } else if (activeMode === 'driver' || (user.role === 'driver' && activeMode !== 'passenger') || (isDriverRegistered && activeMode === 'driver')) {
+    } else if (activeMode === 'driver' && isApproved) {
       setCurrentView('driver-panel');
+    } else if (activeMode === 'driver' && !isApproved) {
+      setCurrentView('driver-pending');
     } else {
       setCurrentView('dashboard');
     }
@@ -347,6 +368,7 @@ export function App() {
                 user={currentUser}
                 onLogout={handleLogout}
                 onOpenDriverApplication={() => setCurrentView('driver-application')}
+                onOpenDriverPending={() => setCurrentView('driver-pending')}
                 onOpenDriverPanel={() => {
                   if (currentUser) {
                     localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');

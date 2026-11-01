@@ -24,6 +24,7 @@ interface RideSearchSheetProps {
   onRequestRide: () => void;
   metrics: {
     distanceKm: number;
+    durationMin?: number;
     fares: { bike: number; car: number; cargo: number };
   };
   onOpenSafetyDrawer?: () => void;
@@ -50,19 +51,22 @@ export const RideSearchSheet: React.FC<RideSearchSheetProps> = ({
   const filteredPlaces = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) {
-      // Default top 4 Peshawar iconic landmarks matching reference image
+      // Default top 6 Peshawar iconic landmarks matching real map locations
       return [
         PESHAWAR_PLACES.find(p => p.name.includes('Islamia College')) || PESHAWAR_PLACES[0],
         PESHAWAR_PLACES.find(p => p.name.includes('Qissa Khwani')) || PESHAWAR_PLACES[1],
         PESHAWAR_PLACES.find(p => p.name.includes('Peshawar Museum')) || PESHAWAR_PLACES[2],
         PESHAWAR_PLACES.find(p => p.name.includes('Saddar')) || PESHAWAR_PLACES[3],
+        PESHAWAR_PLACES.find(p => p.name.includes('Hayatabad')) || PESHAWAR_PLACES[4],
+        PESHAWAR_PLACES.find(p => p.name.includes('Karkhano')) || PESHAWAR_PLACES[5],
       ].filter(Boolean) as PeshawarPlace[];
     }
     return PESHAWAR_PLACES.filter(place => 
       place.name.toLowerCase().includes(q) ||
       place.address.toLowerCase().includes(q) ||
-      (place.sector && place.sector.toLowerCase().includes(q))
-    ).slice(0, 6);
+      (place.sector && place.sector.toLowerCase().includes(q)) ||
+      (place.tags && place.tags.some(t => t.toLowerCase().includes(q)))
+    ).slice(0, 10);
   }, [searchQuery]);
 
   // Select place from recent or suggestions
@@ -478,9 +482,9 @@ export const RideSearchSheet: React.FC<RideSearchSheetProps> = ({
                   <span className="truncate">{toPlace.name.split(' ')[0]}</span>
                 </div>
                 <div className="text-[10px] text-[#16a34a] font-semibold flex items-center gap-1">
-                  <span>{metrics.distanceKm} km route</span>
+                  <span>{metrics.durationMin || Math.max(4, Math.round(metrics.distanceKm * 2.5))} mins</span>
                   <span>•</span>
-                  <span>Direct road</span>
+                  <span>{metrics.distanceKm} km via Peshawar Roads</span>
                 </div>
               </div>
 
