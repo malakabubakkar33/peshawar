@@ -109,10 +109,8 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   const [toPlace, setToPlace] = useState<PeshawarPlace>(PESHAWAR_PLACES[3]);     // Saddar Cantt Bazaar
   const [selectedCategory, setSelectedCategory] = useState<'bike' | 'car' | 'cargo'>('car');
 
-  // Mandatory Location Permission State (Device GPS must be enabled)
-  const [isLocationGranted, setIsLocationGranted] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && !!sessionStorage.getItem('safargo_user_lat');
-  });
+  // Optional Device Location Permission Modal State
+  const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
 
   // Automatic Real Location Tracking on Dashboard Mount
   useEffect(() => {
@@ -123,7 +121,6 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
           const lng = pos.coords.longitude;
           sessionStorage.setItem('safargo_user_lat', lat.toString());
           sessionStorage.setItem('safargo_user_lng', lng.toString());
-          setIsLocationGranted(true);
 
           const nearest = getNearestPeshawarPlace(lat, lng);
           setFromPlace(nearest);
@@ -131,7 +128,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
         (err) => {
           console.warn('GPS initial detection note:', err.message);
         },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
       );
     }
   }, []);
@@ -520,12 +517,22 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                       if ('geolocation' in navigator) {
                         navigator.geolocation.getCurrentPosition(
                           (pos) => {
-                            const nearest = getNearestPeshawarPlace(pos.coords.latitude, pos.coords.longitude);
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            sessionStorage.setItem('safargo_user_lat', lat.toString());
+                            sessionStorage.setItem('safargo_user_lng', lng.toString());
+                            const nearest = getNearestPeshawarPlace(lat, lng);
                             setFromPlace(nearest);
-                            sound.playPop();
+                            sound.playSuccess();
                           },
-                          (err) => console.warn(err)
+                          (err) => {
+                            console.warn('GPS locate error:', err);
+                            setShowLocationModal(true);
+                          },
+                          { enableHighAccuracy: true, timeout: 8000 }
                         );
+                      } else {
+                        setShowLocationModal(true);
                       }
                     }}
                     title="Current GPS Location"
@@ -1245,11 +1252,12 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
         vehicleModel="Honda Civic • White (PWA-7421)"
       />
 
-      {/* Mandatory Device Location (GPS) Permission Modal */}
+      {/* Optional Device Location (GPS) Permission Modal */}
       <LocationPermissionModal
-        isOpen={!isLocationGranted}
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
         onLocationGranted={(coords) => {
-          setIsLocationGranted(true);
+          setShowLocationModal(false);
           if (coords) {
             const nearest = getNearestPeshawarPlace(coords.lat, coords.lng);
             setFromPlace(nearest);

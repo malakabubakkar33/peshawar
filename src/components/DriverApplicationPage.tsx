@@ -10,7 +10,7 @@ import { type UserAccount } from '../lib/supabase';
 import { adminManager } from '../lib/adminData';
 import { sound } from '../lib/sound';
 import { TopErrorToast } from './TopErrorToast';
-import { uploadToCloudinary } from '../lib/cloudinary';
+import { uploadToCloudinary, compressImageFile } from '../lib/cloudinary';
 
 interface DriverApplicationPageProps {
   user: UserAccount | null;
@@ -118,7 +118,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     setTimeout(() => setErrorMsg(null), 4500);
   };
 
-  const handleFileSelected = (key: DocKey, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = async (key: DocKey, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -127,32 +127,31 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
       return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      showError('Image size exceeds 15MB limit. Please select a smaller photo.');
+    if (file.size > 20 * 1024 * 1024) {
+      showError('Image size exceeds 20MB limit. Please select a smaller photo.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      setDocuments(prev => ({ ...prev, [key]: dataUrl }));
+    try {
+      // Compress immediately client-side to prevent browser memory lag & quota exceeded
+      const compressedDataUrl = await compressImageFile(file, 800, 0.72);
+      setDocuments(prev => ({ ...prev, [key]: compressedDataUrl }));
       sound.playSuccess();
+
       // Asynchronously upload to Cloudinary CDN
       uploadToCloudinary(file, 'safargo_driver_docs').then((cRes) => {
         if (cRes.success && cRes.url) {
           setDocuments(prev => ({ ...prev, [key]: cRes.url }));
         }
-      });
-    };
-    reader.onerror = () => {
+      }).catch(() => {});
+    } catch {
       showError('Failed to read the document image. Please try again.');
-    };
-    reader.readAsDataURL(file);
+    }
 
     e.target.value = '';
   };
 
-  const handlePaymentScreenshotSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePaymentScreenshotSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -161,19 +160,22 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      setPaymentScreenshot(dataUrl);
+    try {
+      // Compress receipt screenshot to lightweight crisp JPEG (~40KB)
+      const compressedDataUrl = await compressImageFile(file, 800, 0.72);
+      setPaymentScreenshot(compressedDataUrl);
       sound.playSuccess();
+
       // Asynchronously upload to Cloudinary CDN
       uploadToCloudinary(file, 'safargo_easypaisa_receipts').then((cRes) => {
         if (cRes.success && cRes.url) {
           setPaymentScreenshot(cRes.url);
         }
-      });
-    };
-    reader.readAsDataURL(file);
+      }).catch(() => {});
+    } catch {
+      showError('Failed to process payment screenshot. Please try again.');
+    }
+
     e.target.value = '';
   };
 
@@ -224,6 +226,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
     setErrorMsg(null);
 
     if (!paymentScreenshot) {
+      paymentScreenshotInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return showError('Please upload your EasyPaisa payment receipt screenshot before proceeding.');
     }
 
@@ -255,29 +258,34 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
       };
 
       // Add to Admin Review Queue with Status 'pending' and Payment Screenshot
-      adminManager.addDriverApplication({
-        id: `drv-app-${Date.now()}`,
-        userId: user?.id,
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
-        vehicleType,
-        vehicleName: vehicleName.trim(),
-        vehicleModel: vehicleModel.trim(),
-        vehicleNumber: vehicleNumber.trim(),
-        vehicleColor: vehicleColor.trim() || 'Black',
-        city: user?.city || 'Peshawar',
-        status: 'pending',
-        submittedAt: new Date().toISOString(),
-        documents: {
-          ...documents,
-          paymentScreenshot
-        }
-      });
+      try {
+        adminManager.addDriverApplication({
+          id: `drv-app-${Date.now()}`,
+          userId: user?.id,
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          vehicleType,
+          vehicleName: vehicleName.trim(),
+          vehicleModel: vehicleModel.trim(),
+          vehicleNumber: vehicleNumber.trim(),
+          vehicleColor: vehicleColor.trim() || 'Black',
+          city: user?.city || 'Peshawar',
+          status: 'pending',
+          submittedAt: new Date().toISOString(),
+          documents: {
+            ...documents,
+            paymentScreenshot
+          }
+        });
+      } catch (err) {
+        console.warn('Driver app admin store safe fallback:', err);
+      }
 
-      // Submit to App state -> will display DriverPendingReviewPage
+      // Smooth scroll to top and submit to App state -> will display DriverPendingReviewPage
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       onSubmitApplication(payload);
-    }, 800);
+    }, 300);
   };
 
   return (
@@ -717,7 +725,7 @@ export const DriverApplicationPage: React.FC<DriverApplicationPageProps> = ({
             <div className="space-y-3">
               <button
                 type="button"
-                disabled={isSubmitting || !paymentScreenshot}
+                disabled={isSubmitting}
                 onClick={handleFinalSubmitWithPayment}
                 className="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >

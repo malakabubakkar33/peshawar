@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation, AlertCircle, ShieldAlert, CheckCircle2, RotateCw } from 'lucide-react';
+import { MapPin, Navigation, AlertCircle, CheckCircle2, RotateCw, X } from 'lucide-react';
 import { sound } from '../lib/sound';
 
 interface LocationPermissionModalProps {
   isOpen: boolean;
   onLocationGranted: (coords: { lat: number; lng: number }) => void;
+  onClose?: () => void;
 }
 
 export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
   isOpen,
-  onLocationGranted
+  onLocationGranted,
+  onClose
 }) => {
   const [isRequesting, setIsRequesting] = useState(false);
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -22,7 +24,6 @@ export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = (
       navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
           setPermissionState('granted');
-          // Automatically fetch position
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               onLocationGranted({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -97,83 +98,96 @@ export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = (
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md select-none selection:bg-[#3ebd19]/20">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm select-none selection:bg-[#3ebd19]/20">
         <motion.div
-          initial={{ opacity: 0, scale: 0.92, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: 20 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
           className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 text-center flex flex-col items-center overflow-hidden"
         >
+          {/* Close button if provided */}
+          {onClose && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onClose();
+              }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Background Ambient Glow */}
           <div className="absolute -top-16 -right-16 w-40 h-40 bg-lime-400/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Animated Radar Beacon Icon */}
-          <div className="relative mb-5 mt-2">
-            <div className="w-24 h-24 rounded-full bg-[#e8f8dc] flex items-center justify-center text-[#3bb516] shadow-xl shadow-lime-500/25 relative border-2 border-lime-300">
-              <MapPin className="w-12 h-12 stroke-[2.2] animate-bounce" />
+          {/* Smooth Non-Shaking Icon */}
+          <div className="relative mb-4 mt-2">
+            <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center text-[#16a34a] shadow-lg shadow-emerald-500/10 relative border-2 border-emerald-200">
+              <MapPin className="w-10 h-10 stroke-[2.2]" />
+              <div className="absolute inset-0 rounded-full bg-[#16a34a]/15 radar-soft-pulse pointer-events-none" />
             </div>
-            {/* Pulsing radar waves */}
-            <div className="absolute inset-0 rounded-full bg-[#3ebd19]/30 animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
           </div>
 
-          {/* Mandatory Badge */}
+          {/* Badge */}
           <div className="mb-2">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-black uppercase tracking-wider">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Location Mandatory</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold uppercase tracking-wider">
+              <Navigation className="w-3.5 h-3.5 text-[#16a34a]" />
+              <span>Real-Time GPS</span>
             </span>
           </div>
 
           {/* Heading & Subtitle */}
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
-            Turn On Device Location
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2">
+            Enable Live Location
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mb-5 font-medium">
-            SafarGo needs your exact GPS location to locate nearby Peshawar drivers, calculate accurate road fares, and navigate your route.
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mb-4 font-medium">
+            Allow location access so SafarGo can track your exact pickup point in Peshawar and connect you with nearby drivers.
           </p>
 
           {/* Benefits Checklist */}
-          <div className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3.5 mb-5 text-left text-xs space-y-2">
+          <div className="w-full bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3.5 mb-4 text-left text-xs space-y-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#3ebd19] shrink-0" />
-              <span className="text-slate-700 font-bold">Live pickup from your current location</span>
+              <span className="text-slate-700 font-bold">Auto-detect your current live address</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#3ebd19] shrink-0" />
-              <span className="text-slate-700 font-bold">Fastest driver dispatch in Hayatabad, Saddar & Cantt</span>
+              <span className="text-slate-700 font-bold">Fastest driver dispatch across Peshawar</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#3ebd19] shrink-0" />
-              <span className="text-slate-700 font-bold">Accurate meter & transparent pricing</span>
+              <span className="text-slate-700 font-bold">Accurate route metering & transparent fares</span>
             </div>
           </div>
 
           {/* Error / Denied Instructions Alert */}
           {errorMessage && (
-            <div className="w-full p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs text-left mb-5 space-y-1.5">
+            <div className="w-full p-3 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs text-left mb-4 space-y-1">
               <div className="flex items-center gap-2 font-bold text-red-900">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 <span>Permission Blocked in Settings</span>
               </div>
               <p className="text-[11px] text-red-700 leading-relaxed">
-                Location is blocked in your browser or device settings. Please open your device quick settings or browser site permissions, enable <strong>Location / GPS</strong>, and tap retry.
+                Location is blocked. Please allow Location in your browser address bar (tap the 🔒 icon) and click retry.
               </p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="w-full space-y-2.5">
+          <div className="w-full space-y-2">
             <button
               type="button"
               disabled={isRequesting}
               onClick={handleRequestLocation}
-              className="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-75"
+              className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#5bc522] via-[#45b719] to-[#30a111] hover:from-[#51be19] hover:to-[#28920b] text-white font-extrabold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(69,183,25,0.38)] hover:brightness-105 active:scale-[0.99] transition duration-200 cursor-pointer disabled:opacity-75"
             >
               {isRequesting ? (
                 <div className="flex items-center gap-2">
                   <RotateCw className="w-4 h-4 animate-spin" />
-                  <span>Checking GPS Location...</span>
+                  <span>Finding GPS Location...</span>
                 </div>
               ) : (
                 <>
@@ -183,10 +197,17 @@ export const LocationPermissionModal: React.FC<LocationPermissionModalProps> = (
               )}
             </button>
 
-            {permissionState === 'denied' && (
-              <p className="text-[11px] text-slate-400 font-medium">
-                Tap the lock icon 🔒 in your address bar to reset location permission.
-              </p>
+            {onClose && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  onClose();
+                }}
+                className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                Continue with Peshawar City Center
+              </button>
             )}
           </div>
         </motion.div>

@@ -268,14 +268,41 @@ export const adminManager = {
   },
 
   addDriverApplication(app: DriverApplication): void {
-    const apps = this.getDriverApplications();
-    const existingIdx = apps.findIndex(a => a.id === app.id || a.phone === app.phone);
-    if (existingIdx !== -1) {
-      apps[existingIdx] = { ...apps[existingIdx], ...app };
-    } else {
-      apps.unshift(app);
+    try {
+      const apps = this.getDriverApplications();
+      const existingIdx = apps.findIndex(a => a.id === app.id || a.phone === app.phone);
+      if (existingIdx !== -1) {
+        apps[existingIdx] = { ...apps[existingIdx], ...app };
+      } else {
+        apps.unshift(app);
+      }
+      
+      // Limit to latest 15 applications to keep localStorage snappy and small
+      if (apps.length > 15) {
+        apps.splice(15);
+      }
+
+      try {
+        localStorage.setItem(DRIVER_APPS_KEY, JSON.stringify(apps));
+      } catch (quotaErr) {
+        // Safe fallback if images exceed storage quota: store trimmed document references
+        console.warn('Quota exceeded in driver apps, saving lightweight copy:', quotaErr);
+        const trimmed = apps.map(a => ({
+          ...a,
+          documents: a.documents ? {
+            cnicFront: a.documents.cnicFront?.startsWith('http') ? a.documents.cnicFront : 'uploaded',
+            cnicBack: a.documents.cnicBack?.startsWith('http') ? a.documents.cnicBack : 'uploaded',
+            license: a.documents.license?.startsWith('http') ? a.documents.license : 'uploaded',
+            plate: a.documents.plate?.startsWith('http') ? a.documents.plate : 'uploaded',
+            selfie: a.documents.selfie?.startsWith('http') ? a.documents.selfie : 'uploaded',
+            paymentScreenshot: a.documents.paymentScreenshot || ''
+          } : undefined
+        }));
+        localStorage.setItem(DRIVER_APPS_KEY, JSON.stringify(trimmed));
+      }
+    } catch (err) {
+      console.warn('adminManager.addDriverApplication error:', err);
     }
-    localStorage.setItem(DRIVER_APPS_KEY, JSON.stringify(apps));
   },
 
   approveDriver(id: string): DriverApplication | null {

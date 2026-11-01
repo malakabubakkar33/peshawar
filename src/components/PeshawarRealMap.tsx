@@ -5,7 +5,7 @@ import {
   Locate, Layers, Plus, Minus, MapPin, ChevronDown, 
   Check, Move, Gauge
 } from 'lucide-react';
-import { type PeshawarPlace, PESHAWAR_PLACES } from '../lib/peshawarData';
+import { type PeshawarPlace, PESHAWAR_PLACES, getNearestPeshawarPlace } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
 
 interface PeshawarRealMapProps {
@@ -71,6 +71,35 @@ function findClosestPeshawarName(lat: number, lng: number): { name: string; addr
   }
 }
 
+// Reliable 100% free tile providers that need NO API key
+function getTileLayerConfig(style: 'streets' | 'osm' | 'satellite'): { url: string; options: L.TileLayerOptions } {
+  if (style === 'satellite') {
+    return {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      options: {
+        maxZoom: 19,
+        attribution: '&copy; Esri World Imagery'
+      }
+    };
+  } else if (style === 'osm') {
+    return {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      options: {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    };
+  }
+  // Default 'streets': Google Maps standard road map for Peshawar with English & Urdu labels
+  return {
+    url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    options: {
+      maxZoom: 20,
+      attribution: 'Map &copy; Google / OSM'
+    }
+  };
+}
+
 export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   fromPlace,
   toPlace,
@@ -101,7 +130,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   const [etaRemaining, setEtaRemaining] = useState('3 min');
   const [selectedCity, setSelectedCity] = useState('Peshawar');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  const [mapLayerStyle, setMapLayerStyle] = useState<'voyager' | 'streets' | 'satellite'>('voyager');
+  const [mapLayerStyle, setMapLayerStyle] = useState<'streets' | 'osm' | 'satellite'>('streets');
   const animationFrameRef = useRef<number | null>(null);
 
   // Live User GPS coordinates tracking
@@ -114,98 +143,142 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     return [fromPlace.lat || 34.0151, fromPlace.lng || 71.5349];
   });
 
-  // Automatically track real physical user location on map mount
+  // Automatically track real physical passenger location on mount and watch position
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setUserLiveCoords([lat, lng]);
-          sessionStorage.setItem('safargo_user_lat', lat.toString());
-          sessionStorage.setItem('safargo_user_lng', lng.toString());
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) return;
 
-          if (mapInstanceRef.current && screenState === 'home') {
-            mapInstanceRef.current.flyTo([lat, lng], 14, { duration: 1.4 });
-          }
-        },
-        (err) => {
-          console.warn('Map live GPS auto-track note:', err.message);
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-      );
-    }
+    let isMounted = true;
+
+    // 1. Immediate GPS detection on open
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!isMounted) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLiveCoords([lat, lng]);
+        sessionStorage.setItem('safargo_user_lat', lat.toString());
+        sessionStorage.setItem('safargo_user_lng', lng.toString());
+
+        // Update passenger's pickup location to where they are
+        const nearest = getNearestPeshawarPlace(lat, lng);
+        onSelectPlace?.(nearest, 'from');
+
+        if (mapInstanceRef.current && screenState === 'home') {
+          mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
+        }
+      },
+      (err) => {
+        console.warn('Real GPS auto-detect note:', err.message);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+
+    // 2. Continuous real live tracking as user moves
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (!isMounted) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLiveCoords([lat, lng]);
+        sessionStorage.setItem('safargo_user_lat', lat.toString());
+        sessionStorage.setItem('safargo_user_lng', lng.toString());
+      },
+      (err) => console.warn('Real GPS live tracking note:', err.message),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+
+    return () => {
+      isMounted = false;
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, [screenState]);
 
-  // Initialize Map Once
+  // Helper to safely attach tile layer with automatic OpenStreetMap fallback
+  const attachTileLayer = (map: L.Map, style: 'streets' | 'osm' | 'satellite') => {
+    if (tileLayerRef.current) {
+      tileLayerRef.current.remove();
+      tileLayerRef.current = null;
+    }
+
+    const config = getTileLayerConfig(style);
+    const layer = L.tileLayer(config.url, config.options);
+
+    // If Google tile has network issues, seamlessly fallback to OpenStreetMap
+    layer.on('tileerror', () => {
+      if (style === 'streets') {
+        layer.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+      }
+    });
+
+    layer.addTo(map);
+    tileLayerRef.current = layer;
+  };
+
+  // Initialize Map Once with size guarantees
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Centered at Peshawar city river/hub as in screenshot
+    const initialCenter: [number, number] = [userLiveCoords[0] || 34.0151, userLiveCoords[1] || 71.5349];
+
     const map = L.map(mapContainerRef.current, {
-      center: [34.0151, 71.5349],
-      zoom: 13,
+      center: initialCenter,
+      zoom: 14,
       zoomControl: false,
       attributionControl: false
     });
 
-    const tile = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(map);
-
-    tileLayerRef.current = tile;
+    attachTileLayer(map, mapLayerStyle);
     mapInstanceRef.current = map;
 
+    // Prevent blank white screen: invalidateSize multiple times after layout renders
+    map.whenReady(() => {
+      map.invalidateSize();
+      setTimeout(() => map.invalidateSize(), 150);
+      setTimeout(() => map.invalidateSize(), 400);
+      setTimeout(() => map.invalidateSize(), 800);
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(mapContainerRef.current);
+
+    const handleWindowResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      window.removeEventListener('resize', handleWindowResize);
+      resizeObserver.disconnect();
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
 
-  // Toggle Map Style: Cycle between Voyager (Clean Vector) -> Streets (OSM) -> Satellite (Esri Imagery)
+  // Invalidate size whenever screenState changes (e.g. from search sheet expanding or collapsing)
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 200);
+    }
+  }, [screenState]);
+
+  // Toggle Map Style: Cycle between Streets (Google) -> OSM (OpenStreetMap) -> Satellite (Esri)
   const toggleMapStyle = () => {
     if (!mapInstanceRef.current) return;
     
-    let nextStyle: 'voyager' | 'streets' | 'satellite' = 'streets';
-    if (mapLayerStyle === 'voyager') nextStyle = 'streets';
-    else if (mapLayerStyle === 'streets') nextStyle = 'satellite';
-    else nextStyle = 'voyager';
+    let nextStyle: 'streets' | 'osm' | 'satellite' = 'osm';
+    if (mapLayerStyle === 'streets') nextStyle = 'osm';
+    else if (mapLayerStyle === 'osm') nextStyle = 'satellite';
+    else nextStyle = 'streets';
 
     setMapLayerStyle(nextStyle);
-
-    if (tileLayerRef.current) {
-      tileLayerRef.current.remove();
-    }
-
-    const mapboxToken = (import.meta as any).env?.VITE_MAPBOX_TOKEN;
-    const googleKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_KEY;
-
-    let newUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-    let maxZoom = 19;
-    let subdomains = 'abcd';
-
-    if (nextStyle === 'satellite') {
-      newUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      maxZoom = 19;
-      subdomains = '';
-    } else if (nextStyle === 'streets') {
-      if (mapboxToken) {
-        newUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`;
-        subdomains = '';
-      } else if (googleKey) {
-        newUrl = `https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${googleKey}`;
-        subdomains = '';
-      } else {
-        newUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        subdomains = 'abc';
-      }
-    }
-
-    tileLayerRef.current = L.tileLayer(newUrl, {
-      maxZoom,
-      ...(subdomains ? { subdomains } : {})
-    }).addTo(mapInstanceRef.current);
+    attachTileLayer(mapInstanceRef.current, nextStyle);
   };
 
   // Handle Map Click in Custom Pin Mode
@@ -253,21 +326,20 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     markersRef.current.landmarks.forEach(m => m.remove());
     markersRef.current.landmarks = [];
 
-    // 1. Center User Location Indicator (Blue Dot + Pulsing Dual Green Radar Rings)
+    // 1. Center User Location Indicator (Clean Blue Dot + Smooth Radar Pulse, NO shaking)
     const userLocationCoord: [number, number] = userLiveCoords;
     const centerUserIcon = L.divIcon({
       className: 'user-location-pulse-marker',
       html: `
-        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2" style="width: 72px; height: 72px;">
-          <div class="absolute inset-0 rounded-full bg-[#16a34a]/25 border border-[#16a34a]/40 animate-ping"></div>
-          <div class="absolute inset-2 rounded-full bg-[#16a34a]/20 border border-[#16a34a]/50 animate-pulse"></div>
+        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2" style="width: 56px; height: 56px;">
+          <div class="absolute inset-0 rounded-full bg-[#16a34a]/20 border border-[#16a34a]/35 radar-soft-pulse pointer-events-none"></div>
           <div class="relative w-5 h-5 rounded-full bg-[#0284c7] border-2 border-white shadow-xl flex items-center justify-center">
             <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
           </div>
         </div>
       `,
-      iconSize: [72, 72],
-      iconAnchor: [36, 36]
+      iconSize: [56, 56],
+      iconAnchor: [28, 28]
     });
     markersRef.current.centerUser = L.marker(userLocationCoord, { icon: centerUserIcon }).addTo(map);
 
@@ -366,8 +438,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       markersRef.current.landmarks.push(landmarkMarker);
     });
 
-    // 4. If booking flow is in progress (categories, request_sent, driver_accepted, tracking, etc.),
-    // show the active route and pickup/drop markers
+    // 4. If booking flow is in progress, show active route and pickup/drop markers
     if (screenState !== 'home') {
       // From Marker (Green)
       const fromIcon = L.divIcon({
@@ -398,7 +469,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
           sound.playPop();
           const details = findClosestPeshawarName(pos.lat, pos.lng);
           onSelectPlace?.({
-            id: `drag-${Date.now()}`,
+            id: `pinned-${Date.now()}`,
             name: details.name,
             address: details.address,
             lat: pos.lat,
@@ -409,12 +480,12 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       }
       markersRef.current.from = fromMarker;
 
-      // To Marker (Rose / Red)
+      // To Marker (Red)
       const toIcon = L.divIcon({
         className: 'custom-leaflet-marker',
         html: `
           <div class="relative flex items-center justify-center cursor-pointer group">
-            <div class="w-9 h-9 rounded-full bg-[#f43f5e] border-2 border-white shadow-xl flex items-center justify-center text-white font-black text-xs">
+            <div class="w-9 h-9 rounded-full bg-rose-600 border-2 border-white shadow-xl flex items-center justify-center text-white font-black text-xs">
               B
             </div>
             <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-md bg-slate-900 text-white text-[10px] font-semibold shadow-md pointer-events-none">
@@ -429,7 +500,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       const isToDraggable = isCustomPinMode && pinModeType === 'to';
       const toMarker = L.marker([toPlace.lat, toPlace.lng], { 
         icon: toIcon,
-        draggable: isToDraggable 
+        draggable: isToDraggable
       }).addTo(map);
 
       if (isToDraggable) {
@@ -438,7 +509,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
           sound.playPop();
           const details = findClosestPeshawarName(pos.lat, pos.lng);
           onSelectPlace?.({
-            id: `drag-${Date.now()}`,
+            id: `pinned-to-${Date.now()}`,
             name: details.name,
             address: details.address,
             lat: pos.lat,
@@ -472,8 +543,8 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         duration: 1.2
       });
     } else {
-      // Home screen default focus centered on Peshawar
-      map.flyTo(userLocationCoord, 13, { duration: 1 });
+      // Home screen default focus centered on passenger's real coordinates
+      map.flyTo(userLocationCoord, 14, { duration: 1 });
     }
 
     // Driver Marker if accepted, tracking, arrived, or in trip
@@ -486,7 +557,6 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         className: 'custom-leaflet-driver',
         html: `
           <div class="relative flex items-center justify-center">
-            <div class="absolute w-12 h-12 rounded-full bg-lime-400/30 animate-ping"></div>
             <div class="w-11 h-11 rounded-full bg-slate-900 border-2 border-[#16a34a] shadow-2xl flex items-center justify-center text-xl text-white transform rotate-0" id="driver-vehicle-rotator">
               ${vehicleEmoji}
             </div>
@@ -503,7 +573,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       markersRef.current.driver = driverMarker;
     }
 
-  }, [fromPlace, toPlace, screenState, vehicleType, isCustomPinMode, pinModeType, onSelectPlace]);
+  }, [fromPlace, toPlace, screenState, vehicleType, isCustomPinMode, pinModeType, onSelectPlace, userLiveCoords]);
 
   // Real-Time Animated Movement of Driver along Route
   useEffect(() => {
@@ -591,12 +661,18 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
           setUserLiveCoords([lat, lng]);
           sessionStorage.setItem('safargo_user_lat', lat.toString());
           sessionStorage.setItem('safargo_user_lng', lng.toString());
-          mapInstanceRef.current?.flyTo([lat, lng], 15, { duration: 1.2 });
+
+          const nearest = getNearestPeshawarPlace(lat, lng);
+          onSelectPlace?.(nearest, 'from');
+
+          sound.playSuccess();
+          mapInstanceRef.current?.flyTo([lat, lng], 16, { duration: 1.2 });
         },
         () => {
+          sound.playPop();
           mapInstanceRef.current?.flyTo(userLiveCoords, 15, { duration: 1 });
         },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
       mapInstanceRef.current?.flyTo(userLiveCoords, 15, { duration: 1 });
@@ -614,18 +690,18 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   };
 
   return (
-    <div className={`relative w-full h-full overflow-hidden ${className}`}>
+    <div className={`relative w-full h-full min-h-full overflow-hidden bg-slate-100 ${className}`}>
       {/* Interactive Leaflet Container */}
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+      <div ref={mapContainerRef} className="w-full h-full min-h-[100dvh] z-0" />
 
-      {/* 1. TOP-LEFT FLOATING CITY DROPDOWN PILL (Exact match to reference image) */}
+      {/* 1. TOP-LEFT FLOATING CITY DROPDOWN PILL */}
       <div className="absolute top-4 left-4 z-20 pointer-events-auto">
         <button
           onClick={() => {
             sound.playPop();
             setIsCityDropdownOpen(!isCityDropdownOpen);
           }}
-          className="px-3.5 py-2 rounded-2xl bg-white shadow-md hover:shadow-lg border border-slate-100 flex items-center gap-2 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-white/95 backdrop-blur-md shadow-md hover:shadow-lg border border-slate-200/80 flex items-center gap-2 active:scale-95 transition-all"
         >
           <div className="w-4 h-4 text-[#16a34a] flex items-center justify-center">
             <MapPin className="w-4 h-4 fill-[#16a34a] text-[#16a34a]" />
@@ -678,31 +754,31 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* 2. RIGHT-SIDE FLOATING MAP TOOLS (Exact match to reference image) */}
+      {/* 2. RIGHT-SIDE FLOATING MAP TOOLS */}
       <div className="absolute right-4 top-24 sm:top-28 z-20 flex flex-col items-center gap-2.5 pointer-events-auto">
         {/* Locate / Crosshair Target */}
         <button
           onClick={handleLocateMe}
-          title="Current Location"
-          className="w-11 h-11 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-100/90 flex items-center justify-center text-[#16a34a] hover:bg-emerald-50 active:scale-95 transition-all"
+          title="Current GPS Location"
+          className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md hover:shadow-lg border border-slate-200/80 flex items-center justify-center text-[#16a34a] hover:bg-emerald-50 active:scale-95 transition-all"
         >
           <Locate className="w-5 h-5 stroke-[2.2]" />
         </button>
 
-        {/* Map Layers Toggle */}
+        {/* Map Layers Toggle (Streets -> OSM -> Satellite) */}
         <button
           onClick={() => {
             sound.playClick();
             toggleMapStyle();
           }}
-          title="Toggle Map Style"
-          className="w-11 h-11 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-100/90 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+          title={`Map Style: ${mapLayerStyle.toUpperCase()}`}
+          className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md hover:shadow-lg border border-slate-200/80 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
         >
           <Layers className="w-5 h-5" />
         </button>
 
         {/* Combined Zoom Controls Pill (+ / -) */}
-        <div className="w-11 rounded-2xl bg-white shadow-md border border-slate-100/90 flex flex-col items-center divide-y divide-slate-100 overflow-hidden">
+        <div className="w-11 rounded-2xl bg-white/95 backdrop-blur-md shadow-md border border-slate-200/80 flex flex-col items-center divide-y divide-slate-100 overflow-hidden">
           <button
             onClick={handleZoomIn}
             title="Zoom In"

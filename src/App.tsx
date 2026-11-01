@@ -173,8 +173,24 @@ export function App() {
   const handleDriverApplicationSubmitted = (driverData: any) => {
     setSubmittedDriverData(driverData);
     if (currentUser) {
-      localStorage.setItem(`safargo_driver_registered_${currentUser.id}`, 'pending');
-      localStorage.setItem(`safargo_driver_data_${currentUser.id}`, JSON.stringify(driverData));
+      try {
+        localStorage.setItem(`safargo_driver_registered_${currentUser.id}`, 'pending');
+        // Sanitize stored driver data so heavy images never cause quota issues or slowdowns
+        const safeDriverData = {
+          ...driverData,
+          documents: {
+            cnicFront: driverData.documents?.cnicFront?.startsWith('http') ? driverData.documents.cnicFront : 'uploaded',
+            cnicBack: driverData.documents?.cnicBack?.startsWith('http') ? driverData.documents.cnicBack : 'uploaded',
+            license: driverData.documents?.license?.startsWith('http') ? driverData.documents.license : 'uploaded',
+            plate: driverData.documents?.plate?.startsWith('http') ? driverData.documents.plate : 'uploaded',
+            selfie: driverData.documents?.selfie?.startsWith('http') ? driverData.documents.selfie : 'uploaded',
+            paymentScreenshot: driverData.documents?.paymentScreenshot?.startsWith('http') ? driverData.documents.paymentScreenshot : 'uploaded'
+          }
+        };
+        localStorage.setItem(`safargo_driver_data_${currentUser.id}`, JSON.stringify(safeDriverData));
+      } catch (err) {
+        console.warn('LocalStorage driver data safe fallback:', err);
+      }
     }
     // Form is now pending admin review! Only Admin can approve it.
     setCurrentView('driver-pending');
