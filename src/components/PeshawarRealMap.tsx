@@ -13,6 +13,7 @@ interface PeshawarRealMapProps {
   toPlace: PeshawarPlace;
   screenState: string;
   vehicleType: 'bike' | 'car' | 'cargo';
+  driverName?: string;
   onSelectPlace?: (place: PeshawarPlace, type: 'from' | 'to') => void;
   className?: string;
   isCustomPinMode?: boolean;
@@ -105,6 +106,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   toPlace,
   screenState,
   vehicleType,
+  driverName,
   onSelectPlace,
   className = '',
   isCustomPinMode = false,
@@ -561,7 +563,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
               ${vehicleEmoji}
             </div>
             <div class="absolute -top-6 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#16a34a] text-white font-black text-[9px] shadow-sm">
-              Usman (${etaRemaining})
+              ${driverName || 'Driver'} (${etaRemaining})
             </div>
           </div>
         `,

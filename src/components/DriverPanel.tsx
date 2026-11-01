@@ -10,6 +10,7 @@ import {
 import confetti from 'canvas-confetti';
 import { type UserAccount } from '../lib/supabase';
 import { sound } from '../lib/sound';
+import { rideService, type ActiveRide } from '../lib/rideService';
 
 interface DriverPanelProps {
   user: UserAccount | null;
@@ -146,12 +147,11 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
   const animEarnings = useAnimatedNumber(todayEarnings, 800);
   const animWeeklyEarnings = useAnimatedNumber(weeklyEarnings, 900);
 
-  // Active Trip & Inbound Request Push Alert
-  const [currentRide] = useState<RideRequestItem>(DEFAULT_RIDE_REQUEST);
+  // Real-Time Active Ride & Inbound Request State
+  const [currentRealRide, setCurrentRealRide] = useState<ActiveRide | null>(null);
   const [driverRatingScore, setDriverRatingScore] = useState(5);
-  const [hasNewRequest, setHasNewRequest] = useState(true);
   const [showPushNotification, setShowPushNotification] = useState(false);
-  const [requestCountdown, setRequestCountdown] = useState(20);
+  const [requestCountdown, setRequestCountdown] = useState(25);
 
   // Analytics Chart State
   const [analyticsView, setAnalyticsView] = useState<'today' | 'weekly'>('today');
@@ -168,33 +168,91 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
   const [vehicleColor] = useState(driverData?.vehicleColor || 'Black');
   const [isEditingVehicle, setIsEditingVehicle] = useState(false);
 
-  // Driver details
-  const driverName = driverData?.fullName || user?.fullName || 'Usman Khan';
-  const driverId = driverData?.driverId || 'SGD12345';
-  const driverAvatar = driverData?.documents?.selfie || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+  // Real Driver details
+  const driverName = driverData?.fullName || user?.fullName || 'SafarGo Driver';
+  const driverId = driverData?.driverId || (user ? `SGD-${user.id.slice(-5)}` : 'SGD-9999');
+  const driverAvatar = driverData?.documents?.selfie || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 
-  // Reset selected bar when toggling view
+  // 1. Register Real Driver Presence in Dispatcher
   useEffect(() => {
-    setSelectedBar(null);
-  }, [analyticsView]);
+    if (!user) return;
+    const currentId = user.id;
 
-  // Simulate periodic incoming request when Online
+    if (isOnline) {
+      rideService.registerOnlineDriver({
+        driverId: currentId,
+        driverName: driverData?.fullName || user.fullName,
+        driverPhone: user.phone,
+        driverAvatar,
+        driverRating: 5.0,
+        vehicleType: (driverData?.vehicleType as any) || 'car',
+        vehicleName,
+        vehicleModel,
+        vehicleNumber,
+        vehicleColor,
+        isOnline: true,
+        lastSeen: Date.now()
+      });
+
+      const heartbeat = setInterval(() => {
+        rideService.registerOnlineDriver({
+          driverId: currentId,
+          driverName: driverData?.fullName || user.fullName,
+          driverPhone: user.phone,
+          driverAvatar,
+          driverRating: 5.0,
+          vehicleType: (driverData?.vehicleType as any) || 'car',
+          vehicleName,
+          vehicleModel,
+          vehicleNumber,
+          vehicleColor,
+          isOnline: true,
+          lastSeen: Date.now()
+        });
+      }, 20000);
+
+      return () => clearInterval(heartbeat);
+    } else {
+      rideService.setDriverOffline(currentId);
+    }
+  }, [user, isOnline, driverData, vehicleName, vehicleModel, vehicleNumber, vehicleColor]);
+
+  // Clean offline on unmount
+  useEffect(() => {
+    return () => {
+      if (user) {
+        rideService.setDriverOffline(user.id);
+      }
+    };
+  }, [user]);
+
+  // 2. Real-Time Incoming Ride Requests Listener (Zero fake timers!)
   useEffect(() => {
     if (!isOnline) {
       setShowPushNotification(false);
       return;
     }
 
-    const timer = setTimeout(() => {
-      if (isOnline && activeSubScreen === 'none' && !showPushNotification && hasNewRequest) {
+    const unsubscribe = rideService.subscribeToIncomingRides((realRide) => {
+      const driverVehicleType = driverData?.vehicleType || 'car';
+      // Only notify if driver is online, not busy, and ride matches vehicle
+      if (
+        isOnline && 
+        activeSubScreen === 'none' && 
+        realRide.status === 'searching' &&
+        (!realRide.vehicleType || realRide.vehicleType === driverVehicleType || driverVehicleType === 'all')
+      ) {
+        setCurrentRealRide(realRide);
         setShowPushNotification(true);
-        setRequestCountdown(20);
-        sound.playSuccess();
+        setRequestCountdown(25);
+        sound.playPop();
       }
-    }, 4000);
+    });
 
-    return () => clearTimeout(timer);
-  }, [isOnline, activeSubScreen, hasNewRequest, showPushNotification]);
+    return () => {
+      unsubscribe();
+    };
+  }, [isOnline, activeSubScreen, driverData]);
 
   // Push Notification Countdown
   useEffect(() => {
@@ -204,7 +262,7 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
       setRequestCountdown(prev => {
         if (prev <= 1) {
           setShowPushNotification(false);
-          return 20;
+          return 25;
         }
         return prev - 1;
       });
@@ -220,24 +278,56 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
     setIsOnline(nextState);
     if (!nextState) {
       setShowPushNotification(false);
-      setHasNewRequest(false);
-    } else {
-      setHasNewRequest(true);
+      if (user) rideService.setDriverOffline(user.id);
     }
   };
 
-  // Ride Action Handlers
+  // Resolved dynamic ride object from real data (no fake accounts!)
+  const hasNewRequest = Boolean(currentRealRide && currentRealRide.status === 'searching');
+
+  const currentRide: RideRequestItem = currentRealRide ? {
+    id: currentRealRide.id,
+    passengerName: currentRealRide.riderName,
+    passengerRating: 5.0,
+    passengerRides: 18,
+    pickupLocation: currentRealRide.pickupName,
+    dropLocation: currentRealRide.dropoffName,
+    distanceKm: currentRealRide.distanceKm,
+    durationMin: currentRealRide.durationMin,
+    farePkr: currentRealRide.fare,
+    vehicleType: currentRealRide.vehicleType === 'bike' ? 'Bike' : 'Car AC',
+    timeAgo: 'Just now'
+  } : DEFAULT_RIDE_REQUEST;
+
+  // Real Ride Action Handlers
   const handleAcceptRequest = () => {
+    if (!currentRealRide || !user) return;
     sound.playSuccess();
     setShowPushNotification(false);
+
+    const accepted = rideService.acceptRide(currentRealRide.id, {
+      driverId: user.id,
+      driverName: driverData?.fullName || user.fullName,
+      driverPhone: user.phone,
+      driverAvatar,
+      driverRating: 5.0,
+      vehicleName,
+      vehicleModel,
+      vehicleNumber,
+      vehicleColor
+    });
+
+    if (accepted) {
+      setCurrentRealRide(accepted);
+    }
     setActiveSubScreen('ride-details');
   };
 
-  // Immediate Clean Decline Handler: removes push message & declines request with feedback
+  // Immediate Clean Decline Handler
   const handleDeclineRequest = (fromTab: boolean = false) => {
     sound.playClick();
     setShowPushNotification(false);
-    setHasNewRequest(false);
+    setCurrentRealRide(null);
     setDeclineToast('Ride request has been declined.');
     setTimeout(() => setDeclineToast(null), 3000);
 
@@ -253,16 +343,39 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
 
   const handleArrivedAtPickup = () => {
     sound.playSuccess();
+    if (currentRealRide) {
+      rideService.updateRideStatus(currentRealRide.id, 'driver_arrived');
+    }
     setActiveSubScreen('arrived');
   };
 
   const handleStartTrip = () => {
     sound.playSuccess();
+    if (currentRealRide) {
+      rideService.updateRideStatus(currentRealRide.id, 'ride_in_progress');
+    }
     setActiveSubScreen('in-trip');
   };
 
   const handleEndTrip = () => {
     sound.playSuccess();
+    if (currentRealRide) {
+      rideService.updateRideStatus(currentRealRide.id, 'ride_completed');
+      setTodayEarnings(prev => {
+        const next = prev + currentRealRide.fare;
+        if (user) {
+          localStorage.setItem(`safargo_driver_earnings_${user.id}`, next.toString());
+        }
+        return next;
+      });
+      setCompletedCount(prev => {
+        const next = prev + 1;
+        if (user) {
+          localStorage.setItem(`safargo_driver_completed_${user.id}`, next.toString());
+        }
+        return next;
+      });
+    }
     setActiveSubScreen('completed');
   };
 
@@ -273,8 +386,7 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
       origin: { y: 0.6 }
     });
     sound.playSuccess();
-    setTodayEarnings(prev => prev + currentRide.farePkr);
-    setCompletedCount(prev => prev + 1);
+    setCurrentRealRide(null);
     setActiveSubScreen('none');
     setActiveTab('home');
   };
@@ -1788,7 +1900,6 @@ export const DriverPanel: React.FC<DriverPanelProps> = ({
               onClick={() => {
                 sound.playSuccess();
                 setIsOnline(true);
-                setHasNewRequest(true);
                 setActiveSubScreen('none');
                 setActiveTab('requests');
               }}

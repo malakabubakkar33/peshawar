@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, ArrowRight, MapPin, 
-  Phone, MessageCircle, Check, X, Clock, Wallet, 
+  Phone, MessageCircle, X, Clock, Wallet, 
   Bell, Shield, LogOut, ChevronRight, ShieldCheck,
   User as UserIcon, Settings, HelpCircle, 
   AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles,
@@ -15,6 +15,7 @@ import {
   type HistoryRide, getNearestPeshawarPlace 
 } from '../lib/peshawarData';
 import { sound } from '../lib/sound';
+import { rideService, type ActiveRide } from '../lib/rideService';
 import { PeshawarRealMap } from './PeshawarRealMap';
 import { LocationPermissionModal } from './LocationPermissionModal';
 import { HistoryPage } from './HistoryPage';
@@ -169,36 +170,75 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   // Trip metrics calculation
   const metrics = calculateTripMetrics(fromPlace.name, toPlace.name);
 
-  // Automated progression for the ride booking simulation
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    let msgTimer: ReturnType<typeof setTimeout>;
+  // Real-Time Active Ride State (No fake drivers or hardcoded accounts)
+  const [activeRealRide, setActiveRealRide] = useState<ActiveRide | null>(null);
 
-    if (currentScreen === 'request_sent') {
-      timer = setTimeout(() => {
+  // Real-Time Online Drivers Presence Count
+  const [onlineDriversCount, setOnlineDriversCount] = useState<number>(() => {
+    return rideService.getOnlineDrivers(selectedCategory).length;
+  });
+
+  useEffect(() => {
+    const unsubscribe = rideService.subscribeToOnlineDrivers((drivers) => {
+      const matching = drivers.filter(d => !selectedCategory || d.vehicleType === selectedCategory || selectedCategory === 'car');
+      setOnlineDriversCount(matching.length);
+    });
+    return () => unsubscribe();
+  }, [selectedCategory]);
+
+  // Real-Time Ride Progress Subscription (Driven exclusively by real drivers!)
+  useEffect(() => {
+    if (!activeRealRide || currentScreen === 'home') return;
+
+    const unsubscribe = rideService.subscribeToRide(activeRealRide.id, (updatedRide) => {
+      setActiveRealRide(updatedRide);
+
+      if (updatedRide.status === 'driver_accepted' && currentScreen === 'request_sent') {
         sound.playSuccess();
         setCurrentScreen('driver_accepted');
-      }, 3500);
-    } else if (currentScreen === 'driver_accepted') {
-      msgTimer = setTimeout(() => {
         setHasUnreadDriverMsg(true);
-        sound.playPop();
-      }, 1500);
-
-      timer = setTimeout(() => {
-        setCurrentScreen('live_tracking');
-      }, 4000);
-    } else if (currentScreen === 'live_tracking') {
-      timer = setTimeout(() => {
+      } else if (updatedRide.status === 'driver_arrived' && currentScreen !== 'driver_arrived') {
         sound.playSuccess();
         setCurrentScreen('driver_arrived');
-      }, 6500);
-    }
+      } else if (updatedRide.status === 'ride_in_progress' && currentScreen !== 'ride_in_progress') {
+        sound.playSuccess();
+        setCurrentScreen('ride_in_progress');
+      } else if (updatedRide.status === 'ride_completed' && currentScreen !== 'ride_completed') {
+        sound.playSuccess();
+        setCurrentScreen('ride_completed');
+      } else if (updatedRide.status === 'cancelled') {
+        sound.playError();
+        setCurrentScreen('home');
+      }
+    });
+
     return () => {
-      clearTimeout(timer);
-      clearTimeout(msgTimer);
+      unsubscribe();
     };
-  }, [currentScreen]);
+  }, [activeRealRide?.id, currentScreen]);
+
+  // Real Ride Booking Trigger
+  const handleConfirmRide = () => {
+    sound.playSuccess();
+    const newRide = rideService.createRideRequest({
+      riderId: currentUser.id,
+      riderName: currentUser.fullName,
+      riderPhone: currentUser.phone,
+      riderAvatar: currentUser.avatarUrl,
+      vehicleType: selectedCategory,
+      pickupName: fromPlace.name,
+      dropoffName: toPlace.name,
+      pickupLat: fromPlace.lat,
+      pickupLng: fromPlace.lng,
+      dropoffLat: toPlace.lat,
+      dropoffLng: toPlace.lng,
+      fare: metrics.fares[selectedCategory],
+      distanceKm: `${metrics.distanceKm} km`,
+      durationMin: `${metrics.durationMin} min`
+    });
+    setActiveRealRide(newRide);
+    setCurrentScreen('request_sent');
+  };
 
   // Confetti on Ride Complete
   useEffect(() => {
@@ -486,6 +526,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 toPlace={toPlace}
                 screenState={currentScreen === 'home' && searchSheetState === 'results_route' ? 'categories' : currentScreen}
                 vehicleType={selectedCategory}
+                driverName={activeRealRide?.driverName}
                 isCustomPinMode={isCustomPinMode}
                 pinModeType={pinModeType}
                 onExitPinMode={() => setIsCustomPinMode(false)}
@@ -566,7 +607,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 onSelectVehicle={(v) => setSelectedCategory(v)}
                 onRequestRide={() => {
                   setSearchSheetState('collapsed');
-                  setCurrentScreen('request_sent');
+                  handleConfirmRide();
                 }}
                 metrics={metrics}
                 onOpenSafetyDrawer={() => setIsNavDrawerOpen(true)}
@@ -670,10 +711,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                     </div>
 
                     <button
-                      onClick={() => {
-                        sound.playSuccess();
-                        setCurrentScreen('request_sent');
-                      }}
+                      onClick={handleConfirmRide}
                       className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-lime-500 text-white font-black text-sm shadow-lg shadow-lime-500/25 flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                       <span>Confirm {selectedCategory.toUpperCase()} Ride (PKR {metrics.fares[selectedCategory]})</span>
@@ -683,41 +721,53 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* SCREEN 3: REQUEST SENT (FINDING DRIVER)               */}
+                {/* SCREEN 3: REQUEST SENT (FINDING REAL ONLINE DRIVER)   */}
                 {/* ---------------------------------------------------- */}
                 {currentScreen === 'request_sent' && (
                   <div className="space-y-4 text-center py-2">
                     <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full bg-lime-400/30 animate-ping"></div>
+                      <div className="absolute inset-0 rounded-full bg-lime-400/30 radar-soft-pulse"></div>
                       <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-lime-500 text-white flex items-center justify-center shadow-lg text-2xl">
-                        🚗
+                        {selectedCategory === 'bike' ? '🏍️' : selectedCategory === 'cargo' ? '🚚' : '🚗'}
                       </div>
                     </div>
 
                     <div>
                       <h3 className="text-base font-black text-slate-900">
-                        Finding Driver Near You...
+                        {onlineDriversCount > 0 
+                          ? `Notifying ${onlineDriversCount} Real Online Driver${onlineDriversCount > 1 ? 's' : ''}...`
+                          : 'Searching for Online Drivers...'}
                       </h3>
                       <p className="text-xs text-slate-500 mt-1">
-                        Contacting verified drivers near {fromPlace.name.split(' ')[0]}
+                        {onlineDriversCount > 0
+                          ? `Ride request broadcasted in real-time across Peshawar (${fromPlace.name.split(' ')[0]})`
+                          : 'No driver online right now for this category. Stay on this screen or switch to Driver Mode in another tab to accept.'}
                       </p>
                     </div>
 
-                    {/* Progress Stepper */}
-                    <div className="grid grid-cols-3 gap-2 text-center pt-2">
-                      <div className="p-2 rounded-xl bg-lime-100 border border-lime-300 text-[10px] font-bold text-lime-800">
-                        1. Request Sent
+                    {/* Real-time Dispatch Badge */}
+                    <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-left text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>Live Peshawar Dispatch</span>
+                        </span>
+                        <span className="text-[11px] font-black text-emerald-800">
+                          {onlineDriversCount} Driver{onlineDriversCount !== 1 ? 's' : ''} Online
+                        </span>
                       </div>
-                      <div className="p-2 rounded-xl bg-lime-100 border border-lime-300 text-[10px] font-bold text-lime-800 animate-pulse">
-                        2. Matching
-                      </div>
-                      <div className="p-2 rounded-xl bg-slate-100 text-[10px] font-bold text-slate-400">
-                        3. Dispatch
-                      </div>
+                      <p className="text-[10px] text-emerald-700">
+                        Real 2-way dispatch: Only verified registered drivers can accept. No simulated accounts.
+                      </p>
                     </div>
 
                     <button
-                      onClick={() => setCurrentScreen('categories')}
+                      onClick={() => {
+                        if (activeRealRide) {
+                          rideService.cancelRide(activeRealRide.id);
+                        }
+                        setCurrentScreen('categories');
+                      }}
                       className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                     >
                       Cancel Request
@@ -726,34 +776,46 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* SCREEN 4 & 5: DRIVER ACCEPTED & TRACKING             */}
+                {/* SCREEN 4 & 5: DRIVER ACCEPTED & LIVE TRACKING        */}
                 {/* ---------------------------------------------------- */}
                 {(currentScreen === 'driver_accepted' || currentScreen === 'live_tracking') && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                       <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        Driver on the way • 2 mins away
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Driver on the way • {activeRealRide?.distanceKm || '2 km'} away
                       </span>
-                      <span className="text-xs font-black text-slate-900">PKR {metrics.fares[selectedCategory]}</span>
+                      <span className="text-xs font-black text-slate-900">PKR {activeRealRide?.fare || metrics.fares[selectedCategory]}</span>
                     </div>
 
-                    {/* Driver Profile Card */}
+                    {/* Real Driver Profile Card */}
                     <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white font-black text-base flex items-center justify-center border-2 border-lime-400">
-                          UK
-                        </div>
+                        {activeRealRide?.driverAvatar ? (
+                          <img
+                            src={activeRealRide.driverAvatar}
+                            alt="Driver"
+                            className="w-12 h-12 rounded-2xl object-cover border-2 border-lime-400 shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white font-black text-base flex items-center justify-center border-2 border-lime-400">
+                            {activeRealRide?.driverName ? activeRealRide.driverName.charAt(0).toUpperCase() : 'D'}
+                          </div>
+                        )}
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <h4 className="text-sm font-extrabold text-slate-900">Usman Khan</h4>
+                            <h4 className="text-sm font-extrabold text-slate-900">
+                              {activeRealRide?.driverName || 'Verified Driver'}
+                            </h4>
                             <span className="text-xs font-bold text-amber-500 flex items-center">
-                              ⭐ 4.8
+                              ⭐ {activeRealRide?.driverRating || 5.0}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-600">Honda Civic • White</p>
+                          <p className="text-xs text-slate-600">
+                            {activeRealRide?.vehicleName || (selectedCategory === 'bike' ? 'Honda Bike' : 'Car AC')} • {activeRealRide?.vehicleColor || 'Standard'}
+                          </p>
                           <span className="text-[11px] font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 inline-block mt-0.5">
-                            PWA-7421
+                            {activeRealRide?.vehicleNumber || 'PWA-7421'}
                           </span>
                         </div>
                       </div>
@@ -765,7 +827,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                             sound.playClick();
                             setIsCallOpen(true);
                           }}
-                          title="Voice Call Driver Usman"
+                          title={`Voice Call ${activeRealRide?.driverName || 'Driver'}`}
                           className="w-10 h-10 rounded-xl bg-lime-500 hover:bg-lime-400 text-slate-950 flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-all"
                         >
                           <Phone className="w-4 h-4" />
@@ -776,7 +838,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                             setIsChatOpen(true);
                             setHasUnreadDriverMsg(false);
                           }}
-                          title="Chat with Driver Usman"
+                          title={`Chat with ${activeRealRide?.driverName || 'Driver'}`}
                           className="relative w-10 h-10 rounded-xl bg-white border border-slate-200 hover:border-lime-400 text-emerald-600 flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-all"
                         >
                           <MessageCircle className="w-4 h-4" />
@@ -789,17 +851,6 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                         </button>
                       </div>
                     </div>
-
-                    {/* Quick Sim trigger button for instant testing */}
-                    <button
-                      onClick={() => {
-                        sound.playSuccess();
-                        setCurrentScreen('driver_arrived');
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
-                    >
-                      Simulate: Driver Has Arrived
-                    </button>
                   </div>
                 )}
 
@@ -810,23 +861,35 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                   <div className="space-y-4">
                     <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-center">
                       <span className="text-xs font-black text-amber-800 block">
-                        🚗 Usman has arrived at {fromPlace.name.split(' ')[0]}!
+                        🚗 {activeRealRide?.driverName || 'Driver'} has arrived at {fromPlace.name.split(' ')[0]}!
                       </span>
                       <p className="text-[11px] text-amber-700 mt-0.5">
-                        Vehicle: Honda Civic (PWA-7421). Share OTP: <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-amber-200">5429</span>
+                        Vehicle: {activeRealRide?.vehicleName} ({activeRealRide?.vehicleNumber}). Driver is waiting for you.
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        sound.playSuccess();
-                        setCurrentScreen('ride_in_progress');
-                      }}
-                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-lime-500 text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span>Start Ride</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => {
+                          sound.playClick();
+                          setIsCallOpen(true);
+                        }}
+                        className="py-2.5 px-5 rounded-xl bg-lime-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-sm"
+                      >
+                        <Phone className="w-4 h-4" />
+                        <span>Call Driver</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          sound.playClick();
+                          setIsChatOpen(true);
+                        }}
+                        className="py-2.5 px-5 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 shadow-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Message</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -841,7 +904,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                         <h4 className="text-sm font-black text-slate-900">{toPlace.name}</h4>
                       </div>
                       <span className="text-xs font-extrabold text-lime-700 bg-lime-100 px-2.5 py-1 rounded-full">
-                        {metrics.durationMin} mins left
+                        {activeRealRide?.durationMin || metrics.durationMin} left
                       </span>
                     </div>
 
@@ -853,11 +916,21 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                     {/* In-Trip Driver Contact Bar */}
                     <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center border border-lime-400">
-                          UK
-                        </div>
+                        {activeRealRide?.driverAvatar ? (
+                          <img
+                            src={activeRealRide.driverAvatar}
+                            alt="Driver"
+                            className="w-9 h-9 rounded-xl object-cover border border-lime-400"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center border border-lime-400">
+                            {activeRealRide?.driverName ? activeRealRide.driverName.charAt(0).toUpperCase() : 'D'}
+                          </div>
+                        )}
                         <div>
-                          <p className="text-xs font-extrabold text-slate-900">Usman Khan (Driver)</p>
+                          <p className="text-xs font-extrabold text-slate-900">
+                            {activeRealRide?.driverName || 'Driver'} (Driver)
+                          </p>
                           <p className="text-[10px] text-slate-500">Trip in progress</p>
                         </div>
                       </div>
@@ -885,16 +958,6 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                         </button>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setCurrentScreen('ride_completed');
-                      }}
-                      className="w-full py-3.5 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-md hover:bg-slate-800 flex items-center justify-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span>Complete Trip</span>
-                      <Check className="w-4 h-4 text-lime-400" />
-                    </button>
                   </div>
                 )}
 
@@ -930,7 +993,9 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
 
                     {/* 5-Star Interactive Rating */}
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block mb-1">Rate Usman Khan</span>
+                      <span className="text-xs font-bold text-slate-700 block mb-1">
+                        Rate {activeRealRide?.driverName || 'Driver'}
+                      </span>
                       <div className="flex justify-center gap-2">
                         {[1, 2, 3, 4, 5].map(star => (
                           <button
@@ -1234,10 +1299,10 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       <DriverChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
-        driverName="Usman Khan"
-        driverRating={4.8}
-        vehicleModel="Honda Civic • White"
-        vehiclePlate="PWA-7421"
+        driverName={activeRealRide?.driverName || 'Driver'}
+        driverRating={activeRealRide?.driverRating || 5.0}
+        vehicleModel={`${activeRealRide?.vehicleName || 'Vehicle'} • ${activeRealRide?.vehicleColor || 'White'}`}
+        vehiclePlate={activeRealRide?.vehicleNumber || 'PWA-7421'}
         onOpenCall={() => {
           setIsChatOpen(false);
           setIsCallOpen(true);
@@ -1248,8 +1313,8 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
       <DriverCallModal
         isOpen={isCallOpen}
         onClose={() => setIsCallOpen(false)}
-        driverName="Usman Khan"
-        vehicleModel="Honda Civic • White (PWA-7421)"
+        driverName={activeRealRide?.driverName || 'Driver'}
+        vehicleModel={`${activeRealRide?.vehicleName || 'Vehicle'} (${activeRealRide?.vehicleNumber || 'PWA-7421'})`}
       />
 
       {/* Optional Device Location (GPS) Permission Modal */}
