@@ -5,8 +5,7 @@ import {
   Phone, MessageCircle, X, Clock, Wallet, 
   Bell, Shield, LogOut, ChevronRight, ShieldCheck,
   User as UserIcon, Settings, HelpCircle, 
-  AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles,
-  Locate, Layers
+  AlertCircle, FileText, Lock, Smartphone, Tag, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { type UserAccount } from '../lib/supabase';
@@ -547,49 +546,6 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                     <span>22°C</span>
                     <span className="text-[10px] text-slate-500 font-semibold">Peshawar</span>
                   </div>
-                </div>
-
-                {/* Map Control Buttons (Bottom Right above search pill) */}
-                <div className="absolute right-4 bottom-[150px] sm:bottom-[160px] z-20 pointer-events-auto flex flex-col gap-2 select-none">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sound.playClick();
-                      if ('geolocation' in navigator) {
-                        navigator.geolocation.getCurrentPosition(
-                          (pos) => {
-                            const lat = pos.coords.latitude;
-                            const lng = pos.coords.longitude;
-                            sessionStorage.setItem('safargo_user_lat', lat.toString());
-                            sessionStorage.setItem('safargo_user_lng', lng.toString());
-                            const nearest = getNearestPeshawarPlace(lat, lng);
-                            setFromPlace(nearest);
-                            sound.playSuccess();
-                          },
-                          (err) => {
-                            console.warn('GPS locate error:', err);
-                            setShowLocationModal(true);
-                          },
-                          { enableHighAccuracy: true, timeout: 8000 }
-                        );
-                      } else {
-                        setShowLocationModal(true);
-                      }
-                    }}
-                    title="Current GPS Location"
-                    className="w-10 h-10 rounded-full bg-white/85 backdrop-blur-md border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center text-[#16a34a] hover:bg-white active:scale-95 transition-all"
-                  >
-                    <Locate className="w-5 h-5 stroke-[2.2]" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => sound.playPop()}
-                    title="Map Layers"
-                    className="w-10 h-10 rounded-full bg-white/85 backdrop-blur-md border border-white/80 shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex items-center justify-center text-slate-700 hover:text-[#16a34a] hover:bg-white active:scale-95 transition-all"
-                  >
-                    <Layers className="w-5 h-5 stroke-[2]" />
-                  </button>
                 </div>
               </>
             )}

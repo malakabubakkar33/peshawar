@@ -162,8 +162,18 @@
   height: 100% !important;
   min-height: 100% !important;
   font-family: inherit;
-  background-color: #f1f5f9;
+  background-color: #eef2f6;
   z-index: 10;
+  cursor: grab;
+  outline: none;
+}
+
+.leaflet-container:active {
+  cursor: grabbing;
+}
+
+.leaflet-tile {
+  filter: saturate(1.05) contrast(1.02);
 }
 
 /* Smooth GPS Radar Wave - No violent vibration/jitter */

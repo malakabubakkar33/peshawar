@@ -72,8 +72,8 @@ function findClosestPeshawarName(lat: number, lng: number): { name: string; addr
   }
 }
 
-// Reliable 100% free tile providers that need NO API key
-function getTileLayerConfig(style: 'streets' | 'osm' | 'satellite'): { url: string; options: L.TileLayerOptions } {
+// Reliable 100% free tile providers that need NO API key and load fast in Pakistan
+function getTileLayerConfig(style: 'streets' | 'osm' | 'satellite' | 'google'): { url: string; options: L.TileLayerOptions } {
   if (style === 'satellite') {
     return {
       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -84,19 +84,30 @@ function getTileLayerConfig(style: 'streets' | 'osm' | 'satellite'): { url: stri
     };
   } else if (style === 'osm') {
     return {
-      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       options: {
         maxZoom: 19,
+        subdomains: ['a', 'b', 'c'],
         attribution: '&copy; OpenStreetMap contributors'
       }
     };
+  } else if (style === 'google') {
+    return {
+      url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+      options: {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps'
+      }
+    };
   }
-  // Default 'streets': Google Maps standard road map for Peshawar with English & Urdu labels
+  // Default 'streets': Ultra-reliable CARTO Voyager with retina support & Fastly CDN
   return {
-    url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     options: {
-      maxZoom: 20,
-      attribution: 'Map &copy; Google / OSM'
+      maxZoom: 19,
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '&copy; CARTO &copy; OpenStreetMap'
     }
   };
 }
@@ -116,6 +127,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const hasCenteredInitialRef = useRef(false);
   const markersRef = useRef<{
     from?: L.Marker;
     to?: L.Marker;
@@ -132,7 +144,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
   const [etaRemaining, setEtaRemaining] = useState('3 min');
   const [selectedCity, setSelectedCity] = useState('Peshawar');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  const [mapLayerStyle, setMapLayerStyle] = useState<'streets' | 'osm' | 'satellite'>('streets');
+  const [mapLayerStyle, setMapLayerStyle] = useState<'streets' | 'osm' | 'satellite' | 'google'>('streets');
   const animationFrameRef = useRef<number | null>(null);
 
   // Live User GPS coordinates tracking
@@ -165,7 +177,9 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         const nearest = getNearestPeshawarPlace(lat, lng);
         onSelectPlace?.(nearest, 'from');
 
-        if (mapInstanceRef.current && screenState === 'home') {
+        // Only center map automatically ONCE on initial load so user zoom is never interrupted
+        if (mapInstanceRef.current && !hasCenteredInitialRef.current && screenState === 'home') {
+          hasCenteredInitialRef.current = true;
           mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
         }
       },
@@ -175,7 +189,7 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
 
-    // 2. Continuous real live tracking as user moves
+    // 2. Continuous real live tracking as user moves (updates blue dot only)
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         if (!isMounted) return;
@@ -195,8 +209,8 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     };
   }, [screenState]);
 
-  // Helper to safely attach tile layer with automatic OpenStreetMap fallback
-  const attachTileLayer = (map: L.Map, style: 'streets' | 'osm' | 'satellite') => {
+  // Helper to safely attach tile layer
+  const attachTileLayer = (map: L.Map, style: 'streets' | 'osm' | 'satellite' | 'google') => {
     if (tileLayerRef.current) {
       tileLayerRef.current.remove();
       tileLayerRef.current = null;
@@ -204,19 +218,11 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
 
     const config = getTileLayerConfig(style);
     const layer = L.tileLayer(config.url, config.options);
-
-    // If Google tile has network issues, seamlessly fallback to OpenStreetMap
-    layer.on('tileerror', () => {
-      if (style === 'streets') {
-        layer.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
-      }
-    });
-
     layer.addTo(map);
     tileLayerRef.current = layer;
   };
 
-  // Initialize Map Once with size guarantees
+  // Initialize Map Once with size guarantees and full zoom/drag capability
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -225,25 +231,37 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     const map = L.map(mapContainerRef.current, {
       center: initialCenter,
       zoom: 14,
+      minZoom: 10,
+      maxZoom: 19,
       zoomControl: false,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
+      dragging: true,
       attributionControl: false
     });
 
     attachTileLayer(map, mapLayerStyle);
     mapInstanceRef.current = map;
 
-    // Prevent blank white screen: invalidateSize multiple times after layout renders
-    map.whenReady(() => {
-      map.invalidateSize();
-      setTimeout(() => map.invalidateSize(), 150);
-      setTimeout(() => map.invalidateSize(), 400);
-      setTimeout(() => map.invalidateSize(), 800);
-    });
-
-    const resizeObserver = new ResizeObserver(() => {
+    const handleResize = () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
       }
+    };
+
+    // Prevent blank white screen: invalidateSize multiple times after layout renders
+    map.whenReady(() => {
+      handleResize();
+      setTimeout(handleResize, 100);
+      setTimeout(handleResize, 300);
+      setTimeout(handleResize, 700);
+      setTimeout(handleResize, 1200);
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
     });
 
     resizeObserver.observe(mapContainerRef.current);
@@ -270,13 +288,14 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     }
   }, [screenState]);
 
-  // Toggle Map Style: Cycle between Streets (Google) -> OSM (OpenStreetMap) -> Satellite (Esri)
+  // Toggle Map Style: Cycle between Streets (CARTO) -> Google Roads -> Satellite -> OSM
   const toggleMapStyle = () => {
     if (!mapInstanceRef.current) return;
     
-    let nextStyle: 'streets' | 'osm' | 'satellite' = 'osm';
-    if (mapLayerStyle === 'streets') nextStyle = 'osm';
-    else if (mapLayerStyle === 'osm') nextStyle = 'satellite';
+    let nextStyle: 'streets' | 'osm' | 'satellite' | 'google' = 'google';
+    if (mapLayerStyle === 'streets') nextStyle = 'google';
+    else if (mapLayerStyle === 'google') nextStyle = 'satellite';
+    else if (mapLayerStyle === 'satellite') nextStyle = 'osm';
     else nextStyle = 'streets';
 
     setMapLayerStyle(nextStyle);
@@ -544,9 +563,6 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         maxZoom: 15,
         duration: 1.2
       });
-    } else {
-      // Home screen default focus centered on passenger's real coordinates
-      map.flyTo(userLocationCoord, 14, { duration: 1 });
     }
 
     // Driver Marker if accepted, tracking, arrived, or in trip
@@ -681,20 +697,32 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
     }
   };
 
-  const handleZoomIn = () => {
+  const handleZoomIn = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     sound.playClick();
-    mapInstanceRef.current?.zoomIn();
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomIn(1);
+    }
   };
 
-  const handleZoomOut = () => {
+  const handleZoomOut = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     sound.playClick();
-    mapInstanceRef.current?.zoomOut();
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomOut(1);
+    }
   };
 
   return (
-    <div className={`relative w-full h-full min-h-full overflow-hidden bg-slate-100 ${className}`}>
+    <div className={`relative w-full h-full min-h-full overflow-hidden bg-slate-100 ${className}`} style={{ width: '100%', height: '100%' }}>
       {/* Interactive Leaflet Container */}
-      <div ref={mapContainerRef} className="w-full h-full min-h-[100dvh] z-0" />
+      <div 
+        ref={mapContainerRef} 
+        className="absolute inset-0 w-full h-full z-0 touch-pan-x touch-pan-y" 
+        style={{ width: '100%', height: '100%' }}
+      />
 
       {/* 1. TOP-LEFT FLOATING CITY DROPDOWN PILL */}
       <div className="absolute top-4 left-4 z-20 pointer-events-auto">
@@ -756,44 +784,53 @@ export const PeshawarRealMap: React.FC<PeshawarRealMapProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* 2. RIGHT-SIDE FLOATING MAP TOOLS */}
-      <div className="absolute right-4 top-24 sm:top-28 z-20 flex flex-col items-center gap-2.5 pointer-events-auto">
+      {/* 2. RIGHT-SIDE FLOATING MAP TOOLS (Locate, Layers, Zoom In +, Zoom Out -) */}
+      <div className="absolute right-3.5 sm:right-4 top-20 sm:top-24 z-20 flex flex-col items-center gap-2.5 pointer-events-auto select-none">
         {/* Locate / Crosshair Target */}
         <button
-          onClick={handleLocateMe}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLocateMe();
+          }}
           title="Current GPS Location"
-          className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md hover:shadow-lg border border-slate-200/80 flex items-center justify-center text-[#16a34a] hover:bg-emerald-50 active:scale-95 transition-all"
+          className="w-11 h-11 rounded-2xl bg-white/95 backdrop-blur-md shadow-lg hover:shadow-xl border border-slate-200/90 flex items-center justify-center text-[#16a34a] hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer"
         >
           <Locate className="w-5 h-5 stroke-[2.2]" />
         </button>
 
-        {/* Map Layers Toggle (Streets -> OSM -> Satellite) */}
+        {/* Map Layers Toggle (CARTO Streets -> Google -> Satellite -> OSM) */}
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             sound.playClick();
             toggleMapStyle();
           }}
-          title={`Map Style: ${mapLayerStyle.toUpperCase()}`}
-          className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md hover:shadow-lg border border-slate-200/80 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+          title={`Active Style: ${mapLayerStyle.toUpperCase()} (Tap to switch)`}
+          className="w-11 h-11 rounded-2xl bg-white/95 backdrop-blur-md shadow-lg hover:shadow-xl border border-slate-200/90 flex flex-col items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
         >
-          <Layers className="w-5 h-5" />
+          <Layers className="w-4 h-4 text-emerald-600" />
+          <span className="text-[8px] font-black uppercase text-slate-500 leading-none mt-0.5">
+            {mapLayerStyle === 'streets' ? 'Map' : mapLayerStyle === 'google' ? 'Ggl' : mapLayerStyle === 'satellite' ? 'Sat' : 'OSM'}
+          </span>
         </button>
 
         {/* Combined Zoom Controls Pill (+ / -) */}
-        <div className="w-11 rounded-2xl bg-white/95 backdrop-blur-md shadow-md border border-slate-200/80 flex flex-col items-center divide-y divide-slate-100 overflow-hidden">
+        <div className="w-11 rounded-2xl bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/90 flex flex-col items-center divide-y divide-slate-100 overflow-hidden">
           <button
             onClick={handleZoomIn}
-            title="Zoom In"
-            className="w-11 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+            title="Zoom In (+)"
+            aria-label="Zoom In"
+            className="w-11 h-11 flex items-center justify-center text-slate-800 hover:text-[#16a34a] hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer font-black"
           >
-            <Plus className="w-4 h-4 font-bold" />
+            <Plus className="w-5 h-5 stroke-[2.5]" />
           </button>
           <button
             onClick={handleZoomOut}
-            title="Zoom Out"
-            className="w-11 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+            title="Zoom Out (-)"
+            aria-label="Zoom Out"
+            className="w-11 h-11 flex items-center justify-center text-slate-800 hover:text-[#16a34a] hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer font-black"
           >
-            <Minus className="w-4 h-4 font-bold" />
+            <Minus className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
       </div>
