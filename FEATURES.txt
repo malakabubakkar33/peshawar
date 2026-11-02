@@ -1,0 +1,195 @@
+================================================================================
+                    SAFARGO PESHAWAR (سفر گو پشاور)
+               COMPLETE PROJECT FEATURES & SPECIFICATION
+================================================================================
+
+Platform: Web, Mobile Responsive, Progressive Web App (PWA)
+Target Region: Peshawar, Khyber Pakhtunkhwa, Pakistan
+Primary Tech Stack: React 19, TypeScript, Tailwind CSS, Leaflet Maps,
+                    OSRM Road Routing, Supabase, Framer Motion
+
+================================================================================
+1. THREE-TIER SYSTEM ARCHITECTURE
+================================================================================
+The application is built with 3 integrated portals:
+  [A] Passenger Portal (مسافر ایپ)
+      - Instant ride & delivery booking, real-time map tracking, wallet,
+        in-app chat/call, saved places, and SOS safety center.
+  [B] Driver Portal (ڈرائیور پینل)
+      - Online/offline availability switch, 30s incoming ride alert cards,
+        turn-by-turn road navigation, trip controls, daily earnings & metrics.
+  [C] Admin Management Portal (ایڈمن کنٹرول پینل)
+      - Driver KYC document verification, payment screenshot review,
+        1-click approve/reject, live rides dispatch monitor, and platform stats.
+
+================================================================================
+2. INTERACTIVE PESHAWAR MAP & ROAD NAVIGATION ENGINE
+================================================================================
+* Real Road-Following Routes (OSRM Engine):
+  - Rides follow actual physical roads of Peshawar (GT Road, University Road,
+    Ring Road, Jamrud Road, Khyber Road, Saddar) instead of straight lines.
+* Google Maps Dual-Tone Visual Styling:
+  - Outer dark-green casing line (8px) + Inner vibrant emerald-green line (5px).
+* Smart Auto-Framing & Padding:
+  - Automatically calculates bounds for Pickup and Dropoff locations with
+    bottom-sheet padding so both pins are visible without manual zooming.
+* Zoom Retention & Zero-Jitter Blue Dot:
+  - Real GPS tracking updates only the user location Blue Dot without
+    triggering unwanted map zoom-outs or reset-views.
+  - Soft radar pulse effect without vibration or jitter.
+* 4-in-1 Map Layer Switcher:
+  1. CARTO Voyager (Clean, ultra-fast CDN vector tiles)
+  2. Google Roads (Crisp road network)
+  3. Satellite Hybrid (High-resolution aerial imagery)
+  4. OpenStreetMap (Detailed community road map)
+* Peshawar Landmark Hotspots:
+  - Direct markers for Islamia College, KTH Hospital, Mall Road Saddar,
+    Peshawar Museum, Tatara Park Phase 3, BRT Hayatabad, and Karkhano Market.
+* Pin-on-Map Custom Selector:
+  - Tap or drag anywhere on the map to place custom pins with reverse
+    geocoding to the nearest Peshawar area.
+* Vehicle Telemetry & Compass Bearing:
+  - Driver marker rotates dynamically according to road heading bearing.
+  - Live speed (km/h), remaining distance (km), and dynamic ETA (mins).
+
+================================================================================
+3. REAL-TIME RIDE MATCHING & BOOKING ENGINE
+================================================================================
+* Zero-Fake-Driver Architecture:
+  - No fake accounts or bot simulations. Ride requests are delivered
+    exclusively to genuine online drivers in real-time.
+* Dynamic Travel Time & Distance Display:
+  - Displays real road driving distance and duration on the booking sheet:
+    Example: "12 mins • 6.4 km via Peshawar Roads".
+* Supported Vehicle Categories:
+  1. SafarGo Bike (موٹرسائیکل): Base PKR 60, Per KM PKR 22 (Fast solo travel)
+  2. SafarGo Car AC (گاڑی): Base PKR 150, Per KM PKR 38 (AC family ride)
+  3. SafarGo Cargo (لوڈر / پک اپ): Base PKR 280, Per KM PKR 55 (Goods/Luggage)
+* Complete 6-Step Ride Lifecycle:
+  1. 'searching'       -> Broadcast to online drivers in Peshawar
+  2. 'driver_accepted' -> Locks passenger view to driver details & car info
+  3. 'live_tracking'   -> Driver moves towards pickup location along road
+  4. 'driver_arrived'  -> Audio chime & arrival notification to passenger
+  5. 'ride_in_progress'-> OTP trip start; navigation routes to destination
+  6. 'ride_completed'  -> Fare breakdown and 5-star rating dialog
+* Built-in Audio Effects (Web Audio API):
+  - Pop, click, success chime, driver arrival alert, and ride complete sounds.
+
+================================================================================
+4. DRIVER ONBOARDING, KYC & ADMIN APPROVAL LOCK
+================================================================================
+* 4-Step Registration Wizard:
+  1. Personal Information (Name, Phone, CNIC, Verified DOB 18+, Emergency Contact)
+  2. Vehicle Information (Category, Model, Registration Year, Number Plate, Color)
+  3. KYC Document Uploads (CNIC Front/Back, License, Plate Photo, Selfie)
+     - Includes integrated Image Cropper with canvas compression.
+  4. Registration Fee Payment Verification (PKR 1,500)
+     - EasyPaisa and JazzCash SafarGo Peshawar account display.
+     - Upload receipt/payment screenshot.
+* Strict Admin Approval Lock:
+  - Submitted applications enter 'pending' status.
+  - If user switches from passenger to driver before admin approval,
+    the app strictly blocks the driver panel and shows the "Pending Review" screen.
+  - Driver panel is unlocked ONLY when Admin clicks "Approve" in Admin Portal.
+
+================================================================================
+5. DRIVER PORTAL (DRIVER PANEL)
+================================================================================
+* Online / Offline Switch:
+  - One-tap toggle broadcasting active presence to dispatch engine.
+* Real-Time Incoming Ride Alerts:
+  - 30-second countdown card with passenger name, pickup, dropoff, fare,
+    and Accept/Decline action buttons with audio alert.
+* Live Road Navigation View:
+  - Road-following path with action buttons: "Arrived", "Start Trip", "Complete".
+* Driver Earnings & Statistics Dashboard:
+  - Today's earnings in PKR (net of commission).
+  - Completed trips counter.
+  - Customer rating score (out of 5.0).
+  - Ride acceptance rate percentage.
+
+================================================================================
+6. PASSENGER EXPERIENCE & BOOKING FLOW
+================================================================================
+* Smart Peshawar Places Search:
+  - Instant autocomplete covering 50+ real locations across Peshawar.
+  - Iconic landmarks quick-select chips.
+  - Recent searches history caching.
+* Multi-State Bottom Sheet:
+  - Collapsed Mode (Compact location bar).
+  - Half Sheet (Suggested locations, categories, recent trips).
+  - Full Search (Dual pickup & dropoff search inputs).
+  - Route Preview (Route summary, fares, vehicle switcher, and Book button).
+* Saved Places:
+  - Save Home (گھر), Work (دفتر), or custom favorites for one-tap booking.
+
+================================================================================
+7. IN-APP COMMUNICATION
+================================================================================
+* Real-Time In-App Chat:
+  - Instant messaging between passenger and driver during active trip.
+  - Quick-reply presets: "Waiting outside", "In traffic", "Where are you?".
+  - Sent/delivered receipts and audio notifications.
+* In-App Voice Call Simulator:
+  - Simulated encrypted phone call screen with driver name, vehicle badge,
+    call timer, mute switch, and speaker toggle.
+
+================================================================================
+8. WALLET, PAYMENTS & FARES
+================================================================================
+* Digital SafarGo Wallet:
+  - Current balance in PKR.
+  - EasyPaisa, JazzCash, and Bank Transfer top-up options.
+  - Complete transaction history of trips and top-ups.
+* Promo Codes & Discounts:
+  - Coupon code validator for fare deductions (e.g. PESHAWAR50).
+* Cash Payments:
+  - Support for direct cash collection by drivers upon dropoff.
+
+================================================================================
+9. SAFETY, SOS & EMERGENCY HUB
+================================================================================
+* 1-Tap SOS Emergency Dialing:
+  - Khyber Pakhtunkhwa Police 15 direct dialer.
+  - Rescue 1122 KPK direct dialer.
+* Live Trip Sharing via WhatsApp / SMS:
+  - Generates secure tracking link with driver & vehicle details for family.
+* Trusted Emergency Contacts:
+  - Manage up to 3 emergency contacts.
+* 24/7 Peshawar Support Helpline.
+
+================================================================================
+10. ADMIN CONTROL & MANAGEMENT PORTAL
+================================================================================
+* Driver KYC Verification Queue:
+  - Review submitted applicant profiles, CNIC, License, and Plate images.
+  - High-res viewer for registration fee payment screenshots (PKR 1,500).
+  - 1-Click Approve (instant driver panel unlock) or Reject (with custom reason).
+* User & Fleet Directory:
+  - View, search, and manage registered passengers and drivers.
+* Real-Time Dispatch Monitor & Platform Metrics:
+  - Monitor ongoing active rides across Peshawar.
+  - Daily booking count, platform revenue, and active online driver count.
+
+================================================================================
+11. ACCOUNT MANAGEMENT & SETTINGS
+================================================================================
+* Personal Profile: Edit photo, name, phone, and email.
+* Security & Privacy: Password management and session security.
+* Notifications Preferences: Fine-grained push & sound toggles.
+* Theme & Languages: Dark/Light modes, English and Urdu language readiness.
+* Help, Support & Issue Reporting: In-app support ticket submission.
+* Legal: Terms & Conditions and Privacy Policy pages.
+
+================================================================================
+12. PWA, PERFORMANCE & OFFLINE RESILIENCE
+================================================================================
+* Installable Progressive Web App (PWA) for Android, iOS, and Desktop.
+* Offline Indicator banner with automatic reconnection sync.
+* Synthesized Web Audio API sound effects (zero external audio file latency).
+* Supabase PostgreSQL backend integration with real-time replication.
+* Lightweight bundle with fast Vite build and zero runtime errors.
+
+================================================================================
+                         SAFARGO PESHAWAR
+================================================================================
