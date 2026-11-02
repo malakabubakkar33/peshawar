@@ -109,7 +109,32 @@ The application is built with 3 integrated portals:
   - Ride acceptance rate percentage.
 
 ================================================================================
-6. PASSENGER EXPERIENCE & BOOKING FLOW
+6. SAFARGO CARGO SYSTEM PANEL (کارگو سسٹم پینل)
+================================================================================
+* Dedicated 4-in-1 Cargo Architecture:
+  1. Send Cargo (کارگو بھیجیں):
+     - Peshawar commercial hub shortcuts (Karkhano Market, Hayatabad Industrial
+       Estate, Shoba Bazaar, Chamkani Mandi, Namak Mandi, Ring Road Toll).
+     - Fleet choices: Loader Rickshaw (350kg), Bolan/Carry (500kg), Suzuki
+       Ravi (850kg), Hyundai Shehzore (1.8 Ton), Mazda Truck (3.5 Ton).
+     - Consignment categories: Furniture, Commercial Goods, Electronics,
+       Machinery/Hardware, Produce/Food, and General Packages.
+     - Extra Loaders/Helpers option: Driver only, 1 Helper, or 2 Helpers.
+     - Receiver info and Cash on Delivery (COD) / Wallet settlement.
+  2. Carrier Mode (کارگو ڈرائیور پینل):
+     - Online/Offline toggle for Ravi, Carry, Bolan & Shehzore carriers.
+     - Real-time incoming cargo alerts with 45s countdown timer.
+     - 4-step delivery lifecycle: Arrived at Pickup -> Loaded -> In Transit -> Delivered.
+     - Daily freight earnings and performance tracking.
+  3. Digital Bilty & Tracking (بلٹی ٹریکنگ و ریکارڈ):
+     - Official digital Bilty generation with code (e.g. CRG-481902).
+     - Detailed consignment manifest with sender, receiver, and fare breakdown.
+     - 1-click Print, Download, and Share via WhatsApp.
+  4. Peshawar Commercial Tariff Guide (سرکاری نرخ نامہ):
+     - Transparent standard rates and hub-to-hub freight estimates.
+
+================================================================================
+7. PASSENGER EXPERIENCE & BOOKING FLOW
 ================================================================================
 * Smart Peshawar Places Search:
   - Instant autocomplete covering 50+ real locations across Peshawar.

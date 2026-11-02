@@ -46,6 +46,7 @@ interface DashboardProps {
   onOpenDriverApplication?: () => void;
   onOpenDriverPending?: () => void;
   onOpenDriverPanel?: () => void;
+  onOpenCargoPanel?: () => void;
   onOpenAdminPanel?: () => void;
 }
 
@@ -86,6 +87,7 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
   onOpenDriverApplication,
   onOpenDriverPending,
   onOpenDriverPanel,
+  onOpenCargoPanel,
   onOpenAdminPanel
 }) => {
   // Active Main Page
@@ -340,8 +342,22 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
           </span>
         </div>
 
-        {/* Right: Notifications Bell & User Profile Avatar */}
+        {/* Right: Cargo Quick Pill, Notifications Bell & User Profile Avatar */}
         <div className="flex items-center gap-2 shrink-0">
+          {onOpenCargoPanel && (
+            <button
+              onClick={() => {
+                sound.playSuccess();
+                onOpenCargoPanel();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-300 font-extrabold text-[11px] transition active:scale-95 shadow-xs"
+              title="Open SafarGo Cargo Panel"
+            >
+              <span>📦</span>
+              <span className="hidden sm:inline font-black">Cargo</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               sound.playClick();
@@ -691,6 +707,25 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                         </div>
                       ))}
                     </div>
+
+                    {selectedCategory === 'cargo' && onOpenCargoPanel && (
+                      <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 to-amber-500/25 border border-amber-300 flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-black text-slate-900">Need Shehzore, Ravi or Helpers?</div>
+                          <div className="text-[10px] text-amber-900 font-bold">بڑی گاڑی، مزدور اور بلٹی کے لیے کارگو پینل کھولیں</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sound.playSuccess();
+                            onOpenCargoPanel();
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                        >
+                          Cargo Panel 📦
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       onClick={handleConfirmRide}
@@ -1128,6 +1163,31 @@ export const DashboardPreview: React.FC<DashboardProps> = ({
                   </span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
+
+                {/* Dedicated SafarGo Cargo Action Button */}
+                {onOpenCargoPanel && (
+                  <button
+                    onClick={() => {
+                      setIsNavDrawerOpen(false);
+                      sound.playSuccess();
+                      onOpenCargoPanel();
+                    }}
+                    className="mt-2.5 w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-amber-500/10 hover:from-amber-500/25 hover:to-amber-500/20 border border-amber-400 text-amber-900 text-xs font-black flex items-center justify-between transition-all active:scale-[0.99] shadow-xs cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center text-sm shadow-sm">
+                        📦
+                      </span>
+                      <span className="text-left">
+                        <span className="block text-slate-950 font-black">SafarGo Cargo System</span>
+                        <span className="block text-[10px] text-amber-800 font-bold -mt-0.5">کارگو پینل • سامان ترسیل و بلٹی</span>
+                      </span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[9px] font-extrabold uppercase">
+                      Open
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* B, C, D, E. Scrollable Four Sections with Visible Custom Scrollbar */}

@@ -157,7 +157,35 @@ flowchart TD
 
 ---
 
-## 6. Passenger Experience & Booking Flow
+## 6. SafarGo Cargo System Panel (کارگو سسٹم پینل)
+**Core Component:** [`src/components/CargoPanel.tsx`](file:///d:/projects/app/peshawar%20app/src/components/CargoPanel.tsx)
+
+### 📦 4-in-1 Dedicated Cargo Architecture
+1. **Send Cargo (کارگو بھیجیں):** Complete commercial and residential goods booking engine.
+   - **Peshawar Commercial Hub Shortcuts:** 1-click select Karkhano Market, Hayatabad Industrial Estate, Shoba Bazaar Auto Market, Chamkani Fruit & Grain Mandi, Namak Mandi, and Ring Road Toll Plaza.
+   - **Cargo Fleet Vehicles:**
+     - 🛺 **Loader Rickshaw (لوڈر رکشہ):** Up to 350 KG — Base PKR 200, PKR 35/km (Narrow bazaar lanes).
+     - 🚐 **Suzuki Bolan / Carry (کیری ڈبہ):** Up to 500 KG — Base PKR 300, PKR 45/km (Weatherproof covered boxes).
+     - 🛻 **Suzuki Ravi Pickup (راوی پک اپ):** Up to 850 KG — Base PKR 450, PKR 55/km (Furniture, crates, home shifting).
+     - 🚚 **Hyundai Shehzore 1-Ton (شہزور):** Up to 1.8 Tons — Base PKR 900, PKR 85/km (Heavy industrial & market consignments).
+     - 🚛 **Mazda / Master Truck (مازدا ٹرک):** Up to 3.5 Tons — Base PKR 1,800, PKR 120/km (Full home relocation).
+   - **Loaders / Helpers Option:** No helper (driver only), 1 helper (+Rs 450), or 2 helpers (+Rs 900).
+   - **Consignee / Receiver Info:** Receiver name, phone number, and Cash on Delivery (COD) payment.
+2. **Carrier Mode (کارگو ڈرائیور موڈ):**
+   - Online/Offline toggle for Ravi, Carry, Bolan, and Shehzore drivers.
+   - Real-time incoming cargo job alerts with 45s countdown and sound chime.
+   - 4-step delivery execution: Reach Pickup ➔ Goods Loaded ➔ In Transit ➔ Delivered & Collected.
+   - Daily freight earnings and trip metrics.
+3. **Digital Bilty & Tracking (بلٹی ٹریکنگ و ریکارڈ):**
+   - Computerized Bilty voucher generation with serial code (e.g., `CRG-481902`).
+   - Detailed consignment ledger: Sender, Consignee, Vehicle number, Freight breakdown, Status stamp.
+   - 1-click Print, Download, and Share Bilty via WhatsApp.
+4. **Peshawar Commercial Tariff Guide (سرکاری نرخ نامہ):**
+   - Transparent rates for all vehicle types and hub-to-hub freight estimates across Peshawar.
+
+---
+
+## 7. Passenger Experience & Booking Flow
 **Core Components:** [`src/components/DashboardPreview.tsx`](file:///d:/projects/app/peshawar%20app/src/components/DashboardPreview.tsx), [`src/components/RideSearchSheet.tsx`](file:///d:/projects/app/peshawar%20app/src/components/RideSearchSheet.tsx)
 
 ### 🔍 Smart Peshawar Places Search

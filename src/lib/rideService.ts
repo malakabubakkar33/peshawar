@@ -31,6 +31,16 @@ export interface ActiveRide {
   arrivedAt?: string;
   startedAt?: string;
   completedAt?: string;
+  cargoDetails?: {
+    cargoType: string;
+    weightKg: string;
+    description: string;
+    helpersCount: number;
+    receiverName: string;
+    receiverPhone: string;
+    paymentMode?: 'cash_pickup' | 'cash_delivery' | 'wallet';
+    biltyNumber?: string;
+  };
 }
 
 export interface OnlineDriver {

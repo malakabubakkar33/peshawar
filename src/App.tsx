@@ -8,6 +8,7 @@ import { DriverPendingReviewPage } from './components/DriverPendingReviewPage';
 import { ForgotPasswordModal } from './components/ForgotPasswordModal';
 import { DashboardPreview } from './components/DashboardPreview';
 import { DriverPanel } from './components/DriverPanel';
+import { CargoPanel } from './components/CargoPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { SplashScreen } from './components/SplashScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
@@ -25,7 +26,7 @@ export function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [currentView, setCurrentView] = useState<
-    'login' | 'signup' | 'category' | 'driver-application' | 'driver-pending' | 'dashboard' | 'driver-panel' | 'admin-panel'
+    'login' | 'signup' | 'category' | 'driver-application' | 'driver-pending' | 'dashboard' | 'driver-panel' | 'admin-panel' | 'cargo-panel'
   >('login');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [submittedDriverData, setSubmittedDriverData] = useState<any>(null);
@@ -83,6 +84,8 @@ export function App() {
 
       if (userStorage.isUserAdmin(session)) {
         setCurrentView('admin-panel');
+      } else if (activeMode === 'cargo') {
+        setCurrentView('cargo-panel');
       } else if (activeMode === 'driver' && isApproved) {
         setCurrentView('driver-panel');
       } else if (activeMode === 'driver' && !isApproved) {
@@ -153,6 +156,8 @@ export function App() {
 
     if (userStorage.isUserAdmin(user)) {
       setCurrentView('admin-panel');
+    } else if (activeMode === 'cargo') {
+      setCurrentView('cargo-panel');
     } else if (activeMode === 'driver' && isApproved) {
       setCurrentView('driver-panel');
     } else if (activeMode === 'driver' && !isApproved) {
@@ -175,7 +180,16 @@ export function App() {
       return;
     }
 
-    // Passenger or Cargo selected:
+    if (category === 'cargo') {
+      if (currentUser) {
+        userStorage.updateRole(currentUser.id, 'cargo');
+        localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'cargo');
+      }
+      setCurrentView('cargo-panel');
+      return;
+    }
+
+    // Passenger selected:
     if (currentUser) {
       const updated = userStorage.updateRole(currentUser.id, category);
       if (updated) {
@@ -186,6 +200,7 @@ export function App() {
         setCurrentUser(fallback);
         userStorage.setSession(fallback);
       }
+      localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'passenger');
     }
     // Direct navigation to Home Page
     setCurrentView('dashboard');
@@ -369,6 +384,40 @@ export function App() {
                 onLogout={handleLogout}
                 onOpenDriverApplication={() => setCurrentView('driver-application')}
                 onOpenDriverPending={() => setCurrentView('driver-pending')}
+                onOpenDriverPanel={() => {
+                  if (currentUser) {
+                    localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');
+                  }
+                  setCurrentView('driver-panel');
+                }}
+                onOpenCargoPanel={() => {
+                  if (currentUser) {
+                    localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'cargo');
+                  }
+                  setCurrentView('cargo-panel');
+                }}
+                onOpenAdminPanel={() => setCurrentView('admin-panel')}
+              />
+            </motion.div>
+          )}
+
+          {currentView === 'cargo-panel' && currentUser && (
+            <motion.div
+              key="cargo-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="w-full min-h-screen"
+            >
+              <CargoPanel
+                user={currentUser}
+                onBackToPassenger={() => {
+                  if (currentUser) {
+                    localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'passenger');
+                  }
+                  setCurrentView('dashboard');
+                }}
                 onOpenDriverPanel={() => {
                   if (currentUser) {
                     localStorage.setItem(`safargo_active_mode_${currentUser.id}`, 'driver');
